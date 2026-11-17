@@ -1,0 +1,45 @@
+{
+  "cloth_radius_m": 0.844,
+  "cloth_bottom_m": -0.425,
+  "cloth_height_m": 1.5,
+  "lamp_distance_m": 0.05,
+  "lamp_tcp": [0.135, 0.0, 0.05, 0.0, 1.5708, 0.0],
+  "lamp_roll_deg": 180,
+  "spot_diameter_m": 0.015,
+
+  "height_min_m": 0.05,
+  "height_max_m": 0.60,
+  "start_angle_deg": -180.0,
+  "direction": 1,
+  "job_arc_deg": 45.0,
+
+  "lift_radius_m": 0.57,
+  "retract_radius_m": 0.40,
+  "travel_height_max_m": 0.45,
+  "tilt_down_on_travel": true,
+  "short_hop_m": 0.10,
+  "max_step_deg": 5.0,
+  "travel_step_deg": 15.0,
+
+  "draw_speed_dark_mps": 0.05,
+  "draw_speed_light_mps": 0.15,
+  "point_dwell_s": 0.05,
+  "dot_dwell_max_s": 0.6,
+  "travel_speed_mps": null,
+  "rewind_speed_radps": null,
+
+  "test_speeds_mps": [0.02, 0.04, 0.07, 0.1, 0.15],
+  "test_dwells_s": [0.25, 0.5, 1.0, 2.0, 4.0],
+
+  "recording_s": 10,
+  "recording_max_s": 30,
+  "min_sound_s": 1.0,
+  "gap_keep_s": 0.3,
+  "noise_reduction": 1.5,
+  "mic_threshold_db": -35,
+  "est_path_overhead_s": 6.6,
+
+  "queue_max": 10,
+  "queue_full_policy": "drop_oldest",
+  "port": 8765
+}

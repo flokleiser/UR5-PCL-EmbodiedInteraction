@@ -1,13 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tonspur-Tuch</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one-column workbench. Header, control panel, then the long cloth strip as the hero, with a ruler in cm and time below it. */
 :root{
   --bg:#E7EAEE; --surface:#F5F6F8; --surface-2:#D9DFE6; --fg:#121C29; --muted:#56616E; --line:#C2CAD3;
   --uv:#6B3FE0; --uv-soft:rgba(107,63,224,.38); --on-uv:#FFFFFF;
+  --sim:#1F7A4D; --real:#C4231C; --off:#6B7480; --on-badge:#FFFFFF;
   --shadow:rgba(16,30,52,.35);
   --font-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --font-body:"Archivo","Helvetica Neue",Arial,sans-serif;
@@ -17,20 +20,30 @@
   :root:not([data-theme="light"]){
     --bg:#0C121B; --surface:#141C28; --surface-2:#1B2533; --fg:#E4E9EF; --muted:#8E9AA8; --line:#2B3748;
     --uv:#A68CFF; --uv-soft:rgba(166,140,255,.38); --on-uv:#140B2C; --shadow:rgba(0,0,0,.6);
+    --sim:#2FA36A; --real:#E5483F; --off:#5A6472;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0C121B; --surface:#141C28; --surface-2:#1B2533; --fg:#E4E9EF; --muted:#8E9AA8; --line:#2B3748;
   --uv:#A68CFF; --uv-soft:rgba(166,140,255,.38); --on-uv:#140B2C; --shadow:rgba(0,0,0,.6);
+  --sim:#2FA36A; --real:#E5483F; --off:#5A6472;
   color-scheme:dark;
 }
-body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5}
-.wrap{max-width:1280px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.badge{font-family:var(--font-mono);font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:7px 12px;border-radius:8px;background:var(--off);color:var(--on-badge)}
+.badge[data-target="sim"]{background:var(--sim)}
+.badge[data-target="real"]{background:var(--real)}
+.topbar .right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.estop{font:inherit;font-weight:800;font-size:15px;letter-spacing:.04em;padding:9px 18px;border-radius:999px;border:3px solid #FFD400;background:var(--real);color:#fff;cursor:pointer}
+.estop:disabled{opacity:.5;cursor:default}
 .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
 h1{font-family:var(--font-display);font-stretch:72%;font-weight:760;font-size:clamp(34px,5.2vw,56px);line-height:1;letter-spacing:-.01em;margin:6px 0 12px;text-wrap:balance}
-.lede{margin:0;max-width:66ch;color:var(--muted)}
-.panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+h2.sec{font-family:var(--font-display);font-stretch:80%;font-weight:700;font-size:20px;line-height:1.1;margin:0 0 10px}
+.lede{margin:0;max-width:70ch;color:var(--muted)}
+.panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
 .group{display:grid;gap:9px;align-content:start;min-width:0}
 .glabel{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -39,13 +52,13 @@ h1{font-family:var(--font-display);font-stretch:72%;font-weight:760;font-size:cl
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
 .btn{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.btn.primary{background:var(--uv);color:var(--on-uv);border-color:transparent;font-weight:600}
 .btn:disabled,.seg button:disabled{opacity:.5;cursor:default}
 .btn.rec{background:var(--uv);color:var(--on-uv);border-color:transparent;border-radius:999px;padding:8px 16px;font-weight:600}
 .btn.rec .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
 .btn.rec[aria-pressed="true"] .dot{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
-select,input[type="number"]{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
-input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
+select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .field{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 .check{display:inline-flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
 .check input{accent-color:var(--uv);width:16px;height:16px}
@@ -60,15 +73,30 @@ input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
 .legend div{display:flex;gap:8px;align-items:baseline}
 .legend dt{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .legend dd{margin:0;font-size:14px}
+.mics{grid-template-columns:1fr}
+.miclist{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.mic{display:grid;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);min-width:0}
+.mic.rec{border-color:var(--uv);box-shadow:0 0 0 2px var(--uv-soft)}
+.mic canvas{width:100%;height:18px;display:block;border-radius:4px}
+.mic select{max-width:100%;min-width:0;flex:1}
+.mic input[type="range"]{flex:1;accent-color:var(--uv)}
+.mic .field{display:flex;width:100%}
 
-.bolt{background:var(--surface-2);border-radius:12px;padding-block:26px 14px;min-width:0}
-.scroller{overflow-x:auto;padding-inline:18px;scrollbar-color:var(--line) transparent}
-.stage{position:relative}
-#cloth{display:block;box-shadow:0 12px 26px -16px var(--shadow)}
-#ruler{display:block;margin-top:8px}
+.bolt{background:var(--surface-2);border-radius:12px;padding:18px;min-width:0}
+.stage{position:relative;margin:0 auto}
+canvas.sheet{display:block;box-shadow:0 12px 26px -16px var(--shadow)}
+canvas.ruler{display:block;margin-top:8px}
 .lamp{position:absolute;top:0;width:2px;margin-left:-1px;background:var(--uv);box-shadow:0 0 16px 6px var(--uv-soft);pointer-events:none}
 .lamp span{position:absolute;bottom:100%;left:6px;margin-bottom:4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--uv);white-space:nowrap}
+.cap{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between;font-family:var(--font-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:8px}
 
+.robot{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px 22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0}
+.robot div{min-width:0}
+.robot dt{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.robot dd{margin:2px 0 0;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.robot .wide{grid-column:1/-1}
+.queue{margin:4px 0 0;padding-left:20px;font-size:14px}
+.err{color:var(--real)}
 .status{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .status .left{display:flex;flex-wrap:wrap;gap:4px 18px;min-width:0}
 .msg{margin:0;font-size:14px;padding:10px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--line);max-width:80ch}
@@ -76,27 +104,39 @@ input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){.btn.rec[aria-pressed="true"] .dot{animation:none}}
 </style>
 
+<div class="topbar">
+  <span class="badge" id="badge" data-target="off">Offline · nur Vorschau</span>
+  <div class="right">
+    <button type="button" class="btn" id="reset" hidden>Zurücksetzen und Lampe wegdrehen</button>
+    <button type="button" class="estop" id="estop" title="Taste Esc">NOT-AUS</button>
+  </div>
+</div>
+
 <main class="wrap">
   <header>
-    <p class="eyebrow">UR5 · UV-Lampe 395 nm · Cyanotypie</p>
+    <p class="eyebrow">UR5e · UV-Lampe 395 nm · Cyanotypie</p>
     <h1>Tonspur-Tuch</h1>
-    <p class="lede">Sprich ins Mikrofon oder lade eine Aufnahme. Die Tonspur wird über die ganze Länge des Tuchs verteilt, so wie die UV-Lampe einmal um den Kreis wandert. Du kannst die Darstellung wechseln, ohne neu aufzunehmen.</p>
+    <p class="lede">Aus einer Tonspur wird ein Muster aus Linien und Punkten, das der Roboter mit Licht auf das runde Tuch zeichnet. Langsamer heisst dunkler. Jeder Auftrag bekommt ein Stück des Kreises; ist die Runde voll, dreht der Arm mit der Lampe nach unten zurück und beginnt die nächste Runde darüber.</p>
   </header>
 
   <section class="panel" aria-label="Einstellungen">
     <div class="group">
       <span class="glabel" id="lblMode">Darstellung</span>
       <div class="seg" role="group" aria-labelledby="lblMode" id="modeSeg">
-        <button type="button" id="m-walze" data-mode="walze" aria-pressed="true">Musikwalze</button>
-        <button type="button" id="m-stern" data-mode="stern" aria-pressed="false">Sternbild</button>
-        <button type="button" id="m-licht" data-mode="licht" aria-pressed="false">Lichtton</button>
-        <button type="button" id="m-bits" data-mode="bits" aria-pressed="false">Nullen und Einsen</button>
+        <button type="button" data-mode="walze" aria-pressed="true">Musikwalze</button>
+        <button type="button" data-mode="stern" aria-pressed="false">Sternbild</button>
+        <button type="button" data-mode="licht" aria-pressed="false">Lichtton</button>
+        <button type="button" data-mode="bits" aria-pressed="false">Nullen und Einsen</button>
+        <button type="button" data-mode="melodie" aria-pressed="false">Satzmelodie</button>
+        <button type="button" data-mode="worte" aria-pressed="false">Wortzähler</button>
+        <button type="button" data-mode="test" aria-pressed="false">Testmuster</button>
       </div>
-      <span class="glabel" id="lblMat" style="margin-top:6px">Material</span>
+      <span class="glabel" id="lblMat" style="margin-top:6px">Vorschau Material</span>
       <div class="seg" role="group" aria-labelledby="lblMat" id="matSeg">
-        <button type="button" id="mat-washed" data-mat="washed" aria-pressed="true">Ausgewaschen</button>
-        <button type="button" id="mat-raw" data-mat="raw" aria-pressed="false">Vor dem Waschen</button>
+        <button type="button" data-mat="washed" aria-pressed="true">Ausgewaschen</button>
+        <button type="button" data-mat="raw" aria-pressed="false">Vor dem Waschen</button>
       </div>
+      <label class="check" for="order"><input type="checkbox" id="order" checked> Reihenfolge und Leerfahrten zeigen</label>
     </div>
 
     <div class="group">
@@ -105,10 +145,10 @@ input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
         <button type="button" class="btn rec" id="rec" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span id="recLabel">Aufnahme starten</span></button>
         <label class="field" for="dur">Länge
           <select id="dur">
+            <option value="10" selected>10 s</option>
             <option value="30">30 s</option>
-            <option value="60" selected>1 min</option>
+            <option value="60">1 min</option>
             <option value="180">3 min</option>
-            <option value="600">10 min</option>
           </select>
         </label>
       </div>
@@ -117,21 +157,32 @@ input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
         <input type="file" id="file" accept="audio/*" class="visually-hidden">
         <button type="button" class="btn" id="demo">Beispiel laden</button>
       </div>
-      <p class="hint" id="micHint" hidden>In der Claude-Ansicht ist das Mikrofon gesperrt. Öffne die HTML-Datei im Browser, oder lade eine Sprachmemo als Audiodatei.</p>
+      <p class="hint" id="micHint" hidden>In der Claude-Ansicht ist das Mikrofon gesperrt. Öffne die Seite über den Server (http://localhost:8765/).</p>
     </div>
 
     <div class="group">
-      <span class="glabel" id="lblView">Ansicht</span>
-      <div class="seg" role="group" aria-labelledby="lblView" id="fitSeg">
-        <button type="button" id="fit-detail" data-fit="0" aria-pressed="true">Detail</button>
-        <button type="button" id="fit-all" data-fit="1" aria-pressed="false">Ganzes Tuch</button>
-      </div>
-      <label class="check" for="raster"><input type="checkbox" id="raster" checked> Planraster vorbelichtet</label>
+      <span class="glabel">Roboter</span>
       <div class="row">
-        <label class="field" for="umfang">Umfang <input type="number" id="umfang" min="50" max="2000" step="10" value="530"> cm</label>
-        <label class="field" for="hoehe">Höhe <input type="number" id="hoehe" min="20" max="300" step="5" value="100"> cm</label>
+        <button type="button" class="btn primary" id="send" disabled>Muster an Roboter senden</button>
       </div>
+      <label class="check" for="autoSend"><input type="checkbox" id="autoSend" checked> Neue Aufnahmen automatisch senden</label>
+      <div class="row">
+        <button type="button" class="btn" id="lapTest" disabled>Rundentest</button>
+        <button type="button" class="btn" id="clearQ" disabled>Warteschlange leeren</button>
+      </div>
+      <p class="hint" id="robotHint">Kein Server: Die Seite zeigt nur die Vorschau. Starte <code>python students/flo/tonspur/server.py</code> und öffne http://localhost:8765/.</p>
     </div>
+  </section>
+
+  <section class="panel mics" aria-label="Mikrofone">
+    <div class="group">
+      <span class="glabel">Mikrofone</span>
+      <div class="row">
+        <button type="button" class="btn primary" id="micsOn">Mikrofone einschalten</button>
+      </div>
+      <p class="hint" id="micsHint">Jedes Mikrofon wartet, bis der Pegel über seine Schwelle steigt. Dann sammelt es <span id="recSecs">10</span> s Ton: Alles unter der Schwelle wird herausgeschnitten, Pausen werden auf höchstens <span id="gapSecs">0.3</span> s gekürzt, und das gleichmässige Grundrauschen des Raums wird abgezogen. Nach spätestens <span id="maxSecs">30</span> s ist die Aufnahme fertig; enthält sie weniger als <span id="minSecs">1</span> s Ton, wird sie verworfen. Sonst geht sie in der gewählten Darstellung als Auftrag in die Warteschlange. Während einer Aufnahme wird dasselbe Mikrofon nicht neu ausgelöst. «Testsignal senden» schickt einen zufälligen Ausschnitt der Beispiel-Tonspur, ganz ohne Mikrofon. Die Seite muss sichtbar bleiben, sonst bremst der Browser die Aufnahme.</p>
+    </div>
+    <div class="miclist" id="micList"></div>
   </section>
 
   <section class="mode" aria-live="polite">
@@ -140,50 +191,101 @@ input[type="number"]{width:84px;font-variant-numeric:tabular-nums}
     <dl class="legend" id="legend"></dl>
   </section>
 
-  <section class="bolt" aria-label="Tuch">
-    <div class="scroller" id="scroller">
-      <div class="stage" id="stage">
-        <canvas id="cloth" role="img" aria-label="Vorschau des Cyanotypie-Tuchs"></canvas>
-        <div class="lamp" id="lamp" hidden><span>UV-Lampe</span></div>
-        <canvas id="ruler" aria-hidden="true"></canvas>
-      </div>
+  <section class="bolt" aria-label="Muster eines Auftrags">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 class="sec" style="margin:0">Ein Auftrag</h2>
+      <button type="button" class="btn" id="play" disabled>▶ Anhören</button>
     </div>
+    <div class="stage" id="stage">
+      <canvas class="sheet" id="pattern" role="img" aria-label="Muster eines Auftrags, so wie es belichtet wird"></canvas>
+      <div class="lamp" id="lamp" hidden><span id="lampLabel">Aufnahme</span></div>
+      <canvas class="ruler" id="patRuler" aria-hidden="true"></canvas>
+    </div>
+    <div class="cap"><span id="patInfo"></span><span id="patTime"></span></div>
   </section>
+
+  <section class="bolt" aria-label="Tuch abgewickelt">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 class="sec" style="margin:0">Das ganze Tuch, abgewickelt</h2>
+      <button type="button" class="btn" id="clothReset" disabled>Neues Tuch</button>
+    </div>
+    <div class="stage" id="clothStage">
+      <canvas class="sheet" id="cloth" role="img" aria-label="Abgewickeltes Tuch von 0 bis 360 Grad mit allen Pfaden des Roboters"></canvas>
+      <canvas class="ruler" id="clothRuler" aria-hidden="true"></canvas>
+    </div>
+    <div class="cap"><span id="clothInfo"></span><span id="clothLegend">dunkel: belichtet · violett: wartet · gepunktet: Leerfahrt mit Lampe nach unten</span></div>
+  </section>
+
+  <dl class="robot" aria-label="Zustand des Roboters" aria-live="polite">
+    <div><dt>Ziel</dt><dd id="rTarget">–</dd></div>
+    <div><dt>Verbindung</dt><dd id="rConn">–</dd></div>
+    <div><dt>Runde</dt><dd id="rLap">–</dd></div>
+    <div><dt>Winkel auf dem Tuch</dt><dd id="rAngle">–</dd></div>
+    <div><dt>Höhe</dt><dd id="rHeight">–</dd></div>
+    <div><dt>Lampe</dt><dd id="rLamp">–</dd></div>
+    <div class="wide"><dt>Jetzt</dt><dd id="rStep">–</dd></div>
+    <div class="wide"><dt>Zeichnet</dt><dd id="rJob">–</dd></div>
+    <div class="wide"><dt>Warteschlange</dt><dd id="rQueue">–</dd></div>
+    <div class="wide" id="rErrBox" hidden><dt>Meldung</dt><dd id="rErr" class="err"></dd></div>
+  </dl>
 
   <div class="status">
     <div class="left"><span id="source">Tonspur wird vorbereitet</span><span id="meta"></span></div>
-    <button type="button" class="btn" id="save">Bild speichern (PNG)</button>
+    <button type="button" class="btn" id="save">Muster speichern (PNG)</button>
   </div>
   <p class="msg" id="msg" role="status" hidden></p>
-  <p class="note">Gespeichert werden nur Klangmerkmale: Lautstärke, Tonhöhe und 48 Frequenzbänder, 30-mal pro Sekunde. Die Tonaufnahme selbst wird nirgends abgelegt. Massstab der Vorschau: 4 Pixel pro Zentimeter Stoff.</p>
+  <p class="note">Der Roboter bekommt nur Linien, aus Klangmerkmalen gerechnet: Lautstärke, Tonhöhe und 48 Frequenzbänder, 30-mal pro Sekunde. Den Ton der aktuellen Aufnahme behält nur dieses Browserfenster, damit du ihn anhören kannst; er wird weder gespeichert noch verschickt. Die Vorschau zeigt genau die Pfade, die der Server an den Roboter schickt; die Schwärzung ist geschätzt aus Geschwindigkeit und Haltezeit.</p>
 </main>
 
 <script>
 (() => {
 'use strict';
-const NB = 48, FMIN = 60, FMAX = 8000, FPS = 30, PXCM = 4, TAU = Math.PI * 2;
+const NB = 48, FMIN = 60, FMAX = 8000, FPS = 30, TAU = Math.PI * 2;
+const M = 0.04, UM = 0.02;
 const $ = id => document.getElementById(id);
 const els = {
-  cloth: $('cloth'), ruler: $('ruler'), stage: $('stage'), scroller: $('scroller'), lamp: $('lamp'),
-  rec: $('rec'), recLabel: $('recLabel'), dur: $('dur'), file: $('file'), demo: $('demo'),
-  raster: $('raster'), umfang: $('umfang'), hoehe: $('hoehe'), save: $('save'),
+  pattern: $('pattern'), patRuler: $('patRuler'), stage: $('stage'), lamp: $('lamp'), patInfo: $('patInfo'), patTime: $('patTime'),
+  cloth: $('cloth'), clothRuler: $('clothRuler'), clothStage: $('clothStage'), clothInfo: $('clothInfo'),
+  rec: $('rec'), recLabel: $('recLabel'), dur: $('dur'), file: $('file'), demo: $('demo'), order: $('order'),
+  clothReset: $('clothReset'), lampLabel: $('lampLabel'), play: $('play'),
+  micsOn: $('micsOn'), autoSend: $('autoSend'), micList: $('micList'), recSecs: $('recSecs'),
+  gapSecs: $('gapSecs'), maxSecs: $('maxSecs'), minSecs: $('minSecs'),
+  send: $('send'), lapTest: $('lapTest'), clearQ: $('clearQ'), robotHint: $('robotHint'),
+  badge: $('badge'), estop: $('estop'), reset: $('reset'), save: $('save'),
   source: $('source'), meta: $('meta'), msg: $('msg'), micHint: $('micHint'),
-  modeName: $('modeName'), modeText: $('modeText'), legend: $('legend')
+  modeName: $('modeName'), modeText: $('modeText'), legend: $('legend'),
+  rTarget: $('rTarget'), rConn: $('rConn'), rLap: $('rLap'), rAngle: $('rAngle'), rHeight: $('rHeight'), rLamp: $('rLamp'),
+  rStep: $('rStep'), rJob: $('rJob'), rQueue: $('rQueue'), rErr: $('rErr'), rErrBox: $('rErrBox')
 };
-const ctx = els.cloth.getContext('2d');
 
-const state = { mode: 'walze', material: 'washed', raster: true, fit: false, umfang: 530, hoehe: 100,
-  frames: [], duration: 40, source: '', recording: false, busy: false };
+let CFG = {
+  cloth_radius_m: 0.844, cloth_bottom_m: -0.425, cloth_height_m: 1.5, lamp_distance_m: 0.05, spot_diameter_m: 0.015,
+  height_min_m: 0.05, height_max_m: 0.60, start_angle_deg: -180, direction: 1, job_arc_deg: 45,
+  max_step_deg: 5, draw_speed_dark_mps: 0.05, draw_speed_light_mps: 0.15, point_dwell_s: 0.05, dot_dwell_max_s: 0.6,
+  test_speeds_mps: [0.02, 0.04, 0.07, 0.1, 0.15], test_dwells_s: [0.25, 0.5, 1, 2, 4], vmax: 0.25, target: null, host: null,
+  recording_s: 10, recording_max_s: 30, min_sound_s: 1.0, gap_keep_s: 0.3, noise_reduction: 1.5,
+  mic_threshold_db: -35, est_path_overhead_s: 6.6
+};
+
+const state = { mode: 'walze', material: 'washed', showOrder: true,
+  frames: [], duration: 40, source: '', sourceShort: '', recording: false, busy: false, paths: [], audio: null };
+const robot = { online: false, status: null, plan: null, planVersion: -1 };
 
 const MODES = {
-  walze: { name: 'Musikwalze', text: 'Jeder Toneinsatz wird ein Stift, wie auf der Walze einer Spieldose oder der Notenrolle eines selbstspielenden Klaviers.',
-    legend: [['Waagrecht', 'Zeit'], ['Senkrecht', 'Tonhöhe in 24 Reihen'], ['Länge', 'wie lange der Ton klingt'], ['Breite', 'Lautstärke']] },
-  stern: { name: 'Sternbild', text: 'Nur die stärksten Spitzen im Klangspektrum bleiben stehen und werden zu Konstellationen verbunden, so wie Songerkennung einen Klang identifiziert.',
-    legend: [['Waagrecht', 'Zeit'], ['Senkrecht', 'Frequenz'], ['Grösse', 'Stärke der Spitze'], ['Linien', 'Paare von Spitzen']] },
-  licht: { name: 'Lichtton', text: 'Die Lautstärke als symmetrische Form, wie die Tonspur auf altem Kinofilm. Dazu zwei Streifen für hohe und tiefe Anteile.',
-    legend: [['Mitte', 'Lautstärke'], ['Oberer Streifen', 'hohe Töne'], ['Unterer Streifen', 'tiefe Töne'], ['Weiss', 'Stille']] },
-  bits: { name: 'Nullen und Einsen', text: 'Jede Spalte wird ein 16-Bit-Wort aus Löchern, wie auf einer Lochkarte oder einem Lochstreifen. Belichtet heisst 1, weiss heisst 0. Lautstärke und Tonhöhe jedes Abschnitts liessen sich aus dem Tuch zurücklesen.',
-    legend: [['Spalte', 'ein Zeitabschnitt'], ['Obere 8 Reihen', 'Lautstärke als Binärzahl'], ['Mitte', 'Transportlöcher'], ['Untere 8 Reihen', 'Tonhöhe als Binärzahl']] }
+  walze: { name: 'Musikwalze', text: 'Jeder Toneinsatz wird ein Stift, wie auf der Walze einer Spieldose. Die Lampe hält am Anfang des Stifts kurz an und fährt dann langsam die Länge des Tons ab. Lautere Töne werden langsamer gezeichnet und damit dunkler.',
+    legend: [['Waagrecht', 'Zeit'], ['Senkrecht', 'Tonhöhe in 24 Reihen'], ['Länge', 'wie lange der Ton klingt'], ['Langsamer, dunkler', 'Lautstärke']] },
+  stern: { name: 'Sternbild', text: 'Nur die stärksten Spitzen im Klangspektrum bleiben stehen. Jede Spitze ist ein Lichtpunkt, an dem die Lampe stehen bleibt, verbunden durch schnelle, helle Linien.',
+    legend: [['Waagrecht', 'Zeit'], ['Senkrecht', 'Frequenz'], ['Haltezeit', 'Stärke der Spitze'], ['Linien', 'Paare von Spitzen']] },
+  licht: { name: 'Lichtton', text: 'Die Lautstärke als symmetrische Form, wie die Tonspur auf altem Kinofilm. Die Fläche wird als senkrechte Schraffur in einem Zug belichtet. Die Streifen oben und unten zeigen hohe und tiefe Anteile über die Geschwindigkeit.',
+    legend: [['Schraffur', 'Lautstärke als Höhe'], ['Oberer Streifen', 'hohe Töne'], ['Unterer Streifen', 'tiefe Töne'], ['Langsamer, dunkler', 'mehr Anteil']] },
+  bits: { name: 'Nullen und Einsen', text: 'Jede Spalte wird ein 16-Bit-Wort, wie auf einem Lochstreifen. Jede 1 ist ein kurzer senkrechter Strich, jede 0 bleibt weiss. Die Mitte ist ein Transportpunkt.',
+    legend: [['Spalte', 'ein Zeitabschnitt'], ['Obere 8 Reihen', 'Lautstärke als Binärzahl'], ['Mitte', 'Transportpunkte'], ['Untere 8 Reihen', 'Tonhöhe als Binärzahl']] },
+  melodie: { name: 'Satzmelodie', text: 'Die Tonhöhe der Stimme als durchgehende Linie, so wie ein Satz steigt und fällt. Jede Phrase ohne Pause wird in einem Zug gezeichnet. Steigt die Stimme am Ende einer Phrase, wie bei einer Frage, setzt die Lampe darüber einen Punkt. Wenige, lange Linien: diese Darstellung zeichnet am schnellsten.',
+    legend: [['Waagrecht', 'Zeit'], ['Senkrecht', 'Tonhöhe der Stimme'], ['Linie', 'eine Phrase ohne Pause'], ['Punkt', 'Stimme steigt am Schluss'], ['Langsamer, dunkler', 'lauter gesprochen']] },
+  worte: { name: 'Wortzähler', text: 'Jedes gesprochene Wort wird ein senkrechter Strich, gezählt wie auf einer Strichliste: vier Striche, der fünfte quer. Wörter werden an den kurzen Pausen dazwischen erkannt; schnelles Sprechen ohne Pausen ergibt weniger Striche.',
+    legend: [['Strich', 'ein Wort (geschätzt)'], ['Länge', 'Dauer des Worts'], ['Querstrich', 'jedes fünfte Wort'], ['Langsamer, dunkler', 'lauter gesprochen']] },
+  test: { name: 'Testmuster', text: 'Zum Einstellen der Belichtung und zum Prüfen der Geometrie. Fünf Linien mit verschiedenen Geschwindigkeiten, fünf Punkte mit verschiedenen Haltezeiten, ein Kreis, der auf dem Tuch rund sein muss, und ein Rahmen um die Breite eines Auftrags.',
+    legend: [] }
 };
 const PALETTES = {
   washed: { paper: '#F2F1EC', ink: [16, 48, 104], k: 1 },
@@ -206,6 +308,11 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 const EDGES = Array.from({ length: NB + 1 }, (_, b) => FMIN * Math.pow(FMAX / FMIN, b / NB));
 const bandCenter = b => FMIN * Math.pow(FMAX / FMIN, (b + 0.5) / NB);
 function showMsg(t) { els.msg.textContent = t || ''; els.msg.hidden = !t; }
+const rad = d => d * Math.PI / 180;
+function geom() {
+  return { arcCm: CFG.cloth_radius_m * rad(CFG.job_arc_deg) * 100, hCm: (CFG.height_max_m - CFG.height_min_m) * 100,
+    spotCm: CFG.spot_diameter_m * 100, circCm: CFG.cloth_radius_m * TAU * 100, clothCm: CFG.cloth_height_m * 100 };
+}
 
 /* ---------- feature extraction ---------- */
 function bandsFromMag(mag, sr, n) {
@@ -325,88 +432,15 @@ function analyse(fr) {
   return { rmsP95, peakP98, Lfloor, Lceil, gate, onsets, onsetCount: count };
 }
 
-/* ---------- drawing ---------- */
-let SCALE = 1, lastLayout = null, weave = null;
-let pal = PALETTES.washed;
-const ink = a => `rgba(${pal.ink[0]},${pal.ink[1]},${pal.ink[2]},${clamp(a * pal.k, 0, 1)})`;
+let genDur = 30, genInfo = {};
+const uOf = t => UM + (1 - 2 * UM) * clamp(t / genDur, 0, 1);
 
-function makeWeave() {
-  const c = document.createElement('canvas'); c.width = c.height = 96;
-  const g = c.getContext('2d'), img = g.createImageData(96, 96), rnd = mulberry32(11);
-  for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) {
-    let v = 250 + (rnd() - 0.5) * 9;
-    if (x % 3 === 0) v -= 5;
-    if (y % 4 === 1) v -= 4;
-    v = clamp(v, 0, 255);
-    const o = (y * 96 + x) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = v; img.data[o + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
-  return c;
-}
-
-function layout() {
-  const W = Math.round(state.umfang * PXCM), H = Math.round(state.hoehe * PXCM);
-  const avail = Math.max(200, els.scroller.clientWidth - 36);
-  let cssW, cssH;
-  if (state.fit) { cssW = avail; cssH = Math.min(600, cssW * H / W); cssW = cssH * W / H; }
-  else {
-    cssH = Math.round(Math.min(400, Math.max(220, window.innerHeight * 0.42)));
-    cssW = Math.round(cssH * W / H);
-    if (cssW < avail) { cssW = avail; cssH = Math.min(600, cssW * H / W); cssW = cssH * W / H; }
-  }
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const maxPx = 16e6;
-  if (cssW * cssH * dpr * dpr > maxPx) dpr = Math.sqrt(maxPx / (cssW * cssH));
-  return { W, H, cssW: Math.round(cssW), cssH: Math.round(cssH), dpr, s: (Math.round(cssH) * dpr) / H };
-}
-
-function dot(x, y, r, a) {
-  const R = r * 1.8;
-  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-  g.addColorStop(0, ink(a)); g.addColorStop(0.5, ink(a * 0.85)); g.addColorStop(1, ink(0));
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill();
-}
-
-function drawRaster(W, H) {
-  ctx.save();
-  ctx.shadowBlur = 0;
-  for (let cm = 10; cm < state.umfang; cm += 10) {
-    const x = cm * PXCM;
-    ctx.strokeStyle = ink(cm % 50 === 0 ? 0.17 : 0.08); ctx.lineWidth = cm % 50 === 0 ? 0.9 : 0.6;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let cm = 10; cm < state.hoehe; cm += 10) {
-    const y = cm * PXCM;
-    ctx.strokeStyle = ink(cm % 50 === 0 ? 0.17 : 0.08); ctx.lineWidth = cm % 50 === 0 ? 0.9 : 0.6;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-  const bw = 250, bh = 76;
-  if (W > bw + 60 && H > bh + 40) {
-    const x0 = W - bw - 14, y0 = H - bh - 14;
-    ctx.strokeStyle = ink(0.5); ctx.lineWidth = 1.2; ctx.strokeRect(x0, y0, bw, bh);
-    ctx.lineWidth = 0.7;
-    [19, 38, 57].forEach(dy => { ctx.beginPath(); ctx.moveTo(x0, y0 + dy); ctx.lineTo(x0 + bw, y0 + dy); ctx.stroke(); });
-    ctx.fillStyle = ink(0.62); ctx.textBaseline = 'middle';
-    ctx.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
-    const lines = ['TONSPUR-TUCH', 'Darstellung  ' + MODES[state.mode].name, 'Tonspur  ' + fmt(state.duration) + ' · ' + (state.sourceShort || ''), 'Massstab 1:1 · ' + state.umfang + ' × ' + state.hoehe + ' cm'];
-    lines.forEach((t, i) => ctx.fillText(t, x0 + 8, y0 + 9.5 + i * 19));
-  }
-  ctx.restore();
-}
-
-function drawWalze(fr, st, W, H, m) {
-  const n = fr.length, rows = 24, usable = H - 2 * m, rowH = usable / rows;
-  const yRow = k => H - m - (k + 0.5) * rowH;
-  const xOf = t => t / state.duration * W;
+function genWalze(fr, st) {
+  const n = fr.length, rows = 24, out = [];
+  const vRow = k => M + (k + 0.5) / rows * (1 - 2 * M);
   const fToRow = f => clamp(Math.round(Math.log(f / 80) / Math.log(2000 / 80) * (rows - 1)), 0, rows - 1);
   const norm = v => clamp((v - st.Lfloor) / (st.Lceil - st.Lfloor), 0, 1);
-  const pin = (x0, x1, y, w, a) => {
-    ctx.lineCap = 'round'; ctx.lineWidth = w;
-    ctx.strokeStyle = ink(a * 0.72); ctx.shadowColor = ink(a * 0.5); ctx.shadowBlur = w * 0.5 * SCALE;
-    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(Math.max(x1, x0 + 0.01), y); ctx.stroke();
-    ctx.shadowBlur = 0;
-    dot(x0, y, w * 0.6, a);
-  };
+  const pin = (x0, x1, v, dark, dwell) => out.push({ pts: x1 - x0 > 0.004 ? [[x0, v], [x1, v]] : [[x0, v]], dark, dwell });
   let lastRow = -99, lastT = -1;
   for (let i = 0; i < n; i++) {
     const F = fr[i];
@@ -423,34 +457,32 @@ function drawWalze(fr, st, W, H, m) {
     const row = fToRow(f);
     let j = i + 1;
     while (j < n && fr[j].rms > F.rms * 0.45 && !st.onsets[j] && fr[j].t - F.t < 1.4) j++;
-    const x0 = xOf(F.t), x1 = xOf(fr[Math.min(j, n - 1)].t);
+    const x0 = uOf(F.t), x1 = uOf(fr[Math.min(j, n - 1)].t);
     const loud = Math.min(1, clamp(F.rms / st.rmsP95, 0.15, 1.2));
-    const w = rowH * (0.25 + 0.45 * loud);
-    pin(x0, x1, yRow(row), w, 0.55 + 0.4 * loud);
+    pin(x0, x1, vRow(row), clamp(0.25 + 0.75 * loud, 0, 1), CFG.dot_dwell_max_s * (0.3 + 0.7 * loud));
     let b2 = -1;
     for (let b = 6; b < NB; b++) {
       const rb = fToRow(bandCenter(b));
       if (Math.abs(rb - row) < 3) continue;
       if (b2 < 0 || F.L[b] > F.L[b2]) b2 = b;
     }
-    if (b2 >= 0 && norm(F.L[b2]) > 0.8) {
-      pin(x0, x0 + (x1 - x0) * 0.6, yRow(fToRow(bandCenter(b2))), w * 0.7, 0.45 + 0.3 * loud);
-    }
+    if (b2 >= 0 && norm(F.L[b2]) > 0.8) pin(x0, x0 + (x1 - x0) * 0.6, vRow(fToRow(bandCenter(b2))), 0.2 + 0.5 * loud, 0);
     lastRow = row; lastT = F.t;
   }
+  return out;
 }
 
-function drawStern(fr, st, W, H, m) {
-  const n = fr.length, usable = H - 2 * m, span = st.Lceil - st.Lfloor;
-  const M = new Float32Array(n * NB);
+function genStern(fr, st, G) {
+  const n = fr.length, span = st.Lceil - st.Lfloor, out = [];
+  const Mx = new Float32Array(n * NB);
   for (let i = 0; i < n; i++) {
     const quiet = fr[i].rms < st.gate * 0.6;
-    for (let b = 0; b < NB; b++) M[i * NB + b] = quiet ? 0 : clamp((fr[i].L[b] - st.Lfloor) / span, 0, 1);
+    for (let b = 0; b < NB; b++) Mx[i * NB + b] = quiet ? 0 : clamp((fr[i].L[b] - st.Lfloor) / span, 0, 1);
   }
   const TH = 0.55, win = Math.max(1, Math.round(FPS * 0.35));
   const groups = new Map();
   for (let i = 0; i < n; i++) for (let b = 2; b < NB; b++) {
-    const v = M[i * NB + b];
+    const v = Mx[i * NB + b];
     if (v < TH) continue;
     let isPeak = true;
     for (let di = -3; di <= 3 && isPeak; di++) {
@@ -458,7 +490,7 @@ function drawStern(fr, st, W, H, m) {
       for (let db = -2; db <= 2; db++) {
         if (!di && !db) continue;
         const bb = b + db; if (bb < 0 || bb >= NB) continue;
-        const w = M[ii * NB + bb];
+        const w = Mx[ii * NB + bb];
         if (w > v || (w === v && (di < 0 || (di === 0 && db < 0)))) { isPeak = false; break; }
       }
     }
@@ -471,41 +503,39 @@ function drawStern(fr, st, W, H, m) {
   [...groups.keys()].sort((a, b) => a - b).forEach(k => {
     groups.get(k).sort((a, b) => b.v - a.v).slice(0, 3).sort((a, b) => a.i - b.i).forEach(p => peaks.push(p));
   });
-  const xOf = i => fr[i].t / state.duration * W;
-  const yOf = b => H - m - (b + 0.5) / NB * usable;
-  ctx.lineCap = 'round'; ctx.lineWidth = 0.9; ctx.shadowBlur = 0;
+  const xOf = i => uOf(fr[i].t);
+  const yOf = b => M + (b + 0.5) / NB * (1 - 2 * M);
   for (let a = 0; a < peaks.length; a++) {
-    const p = peaks[a]; let c = 0;
+    const p = peaks[a], k = (p.v - TH) / (1 - TH), x = xOf(p.i), y = yOf(p.b);
+    out.push({ pts: [[x, y]], dark: 0.8, dwell: CFG.dot_dwell_max_s * (0.2 + 0.8 * k) });
+    if (k > 0.65) {
+      const half = 0.6 + 1.4 * k, du = half / G.arcCm, dv = half / G.hCm;
+      out.push({ pts: [[clamp(x - du, 0, 1), y], [clamp(x + du, 0, 1), y]], dark: 0.35, dwell: 0 });
+      out.push({ pts: [[x, clamp(y - dv, 0, 1)], [x, clamp(y + dv, 0, 1)]], dark: 0.35, dwell: 0 });
+    }
+    let c = 0;
     for (let q = a + 1; q < peaks.length; q++) {
       const o = peaks[q], dt = fr[o.i].t - fr[p.i].t;
       if (dt < 0.08) continue;
       if (dt > 1.6) break;
       if (Math.abs(o.b - p.b) <= 14) {
-        ctx.strokeStyle = ink(0.3);
-        ctx.beginPath(); ctx.moveTo(xOf(p.i), yOf(p.b)); ctx.lineTo(xOf(o.i), yOf(o.b)); ctx.stroke();
+        out.push({ pts: [[x, y], [xOf(o.i), yOf(o.b)]], dark: 0.15, dwell: 0 });
         if (++c >= 3) break;
       }
     }
   }
-  for (const p of peaks) {
-    const k = (p.v - TH) / (1 - TH), x = xOf(p.i), y = yOf(p.b), r = 1.6 + 5.5 * k;
-    dot(x, y, r, 0.62 + 0.35 * k);
-    if (k > 0.65) {
-      ctx.strokeStyle = ink(0.35); ctx.lineWidth = 0.7;
-      ctx.beginPath(); ctx.moveTo(x - r * 3, y); ctx.lineTo(x + r * 3, y); ctx.moveTo(x, y - r * 3); ctx.lineTo(x, y + r * 3); ctx.stroke();
-    }
-  }
+  return out;
 }
 
-function drawLicht(fr, st, W, H, m) {
-  const n = fr.length, cols = Math.ceil(W), usable = H - 2 * m, span = st.Lceil - st.Lfloor;
+function genLicht(fr, st, G) {
+  const n = fr.length, span = st.Lceil - st.Lfloor, out = [];
+  const cols = Math.max(8, Math.round(G.arcCm * (1 - 2 * UM) / G.spotCm));
   const amp = new Float32Array(cols).fill(-1), hi = new Float32Array(cols), lo = new Float32Array(cols);
-  const xOf = t => t / state.duration * W;
   let lastCol = 0;
   for (let i = 0; i < n; i++) {
-    const F = fr[i], c = Math.min(cols - 1, Math.floor(xOf(F.t)));
+    const F = fr[i], c = Math.min(cols - 1, Math.floor(clamp(F.t / genDur, 0, 1) * cols));
     const quiet = F.rms < st.gate * 0.5;
-    const a = quiet ? 0 : clamp(F.peak / st.peakP98, 0, 1.15);
+    const a = quiet ? 0 : clamp(F.peak / st.peakP98, 0, 1);
     let h = 0, l = 0;
     if (!quiet) {
       for (let b = 30; b < NB; b++) h += clamp((F.L[b] - st.Lfloor) / span, 0, 1);
@@ -515,7 +545,6 @@ function drawLicht(fr, st, W, H, m) {
     amp[c] = Math.max(amp[c], a); hi[c] = Math.max(hi[c], h); lo[c] = Math.max(lo[c], l);
     lastCol = Math.max(lastCol, c);
   }
-  // fill gaps between measured columns
   let prev = -1;
   for (let c = 0; c <= lastCol; c++) {
     if (amp[c] < 0) continue;
@@ -528,45 +557,51 @@ function drawLicht(fr, st, W, H, m) {
     prev = c;
   }
   for (let c = 0; c <= lastCol; c++) if (amp[c] < 0) amp[c] = 0;
-  const cy = H / 2, maxHalf = usable * 0.36;
-  ctx.beginPath();
-  for (let c = 0; c <= lastCol; c++) { const y = cy - (0.6 + amp[c] * maxHalf); c === 0 ? ctx.moveTo(c + 0.5, y) : ctx.lineTo(c + 0.5, y); }
-  for (let c = lastCol; c >= 0; c--) ctx.lineTo(c + 0.5, cy + (0.6 + amp[c] * maxHalf));
-  ctx.closePath();
-  ctx.fillStyle = ink(0.9); ctx.shadowColor = ink(0.6); ctx.shadowBlur = 1.2 * SCALE; ctx.fill(); ctx.shadowBlur = 0;
-  const sh = usable * 0.09, topY = m, botY = H - m - sh;
+  const xc = c => UM + (c + 0.5) / cols * (1 - 2 * UM);
+  const cy = 0.5, maxHalf = 0.36 * (1 - 2 * M), minHalf = G.spotCm / 2 / G.hCm;
+  const main = [];
   for (let c = 0; c <= lastCol; c++) {
-    if (hi[c] > 0.02) { ctx.fillStyle = ink(0.06 + 0.84 * Math.pow(hi[c], 1.2)); ctx.fillRect(c, topY, 1.05, sh); }
-    if (lo[c] > 0.02) { ctx.fillStyle = ink(0.06 + 0.84 * Math.pow(lo[c], 1.2)); ctx.fillRect(c, botY, 1.05, sh); }
+    const d = minHalf + amp[c] * maxHalf, a = [xc(c), cy - d], b = [xc(c), cy + d];
+    if (c % 2) main.push(b, a); else main.push(a, b);
   }
+  if (main.length) out.push({ pts: main, dark: 0.9, dwell: 0 });
+  const sh = 0.09 * (1 - 2 * M);
+  const level = v => v > 0.02 ? clamp(Math.ceil(Math.pow(v, 1.2) * 3), 1, 3) : 0;
+  [[hi, 1 - M - sh], [lo, M]].forEach(([arr, y0]) => {
+    let c = 0;
+    while (c <= lastCol) {
+      const lv = level(arr[c]);
+      if (!lv) { c++; continue; }
+      const run = [];
+      let k = c;
+      while (k <= lastCol && level(arr[k]) === lv) {
+        const a = [xc(k), y0], b = [xc(k), y0 + sh];
+        if ((k - c) % 2) run.push(b, a); else run.push(a, b);
+        k++;
+      }
+      out.push({ pts: run, dark: lv / 3, dwell: 0 });
+      c = k;
+    }
+  });
+  return out;
 }
 
-function drawBits(fr, st, W, H, m) {
-  const usable = H - 2 * m, rows = 17, rowH = usable / rows;
-  const cols = Math.max(8, Math.floor(W / (rowH * 0.9))), colW = W / cols;
-  const n = fr.length;
+function genBits(fr, st, G) {
+  const rows = 17, rowH = (1 - 2 * M) / rows, rowHcm = rowH * G.hCm;
+  const cols = Math.max(8, Math.floor(G.arcCm * (1 - 2 * UM) / (rowHcm * 0.9))), colW = (1 - 2 * UM) / cols;
+  const n = fr.length, out = [];
   const sumR = new Float32Array(cols), cnt = new Float32Array(cols), pS = new Float32Array(cols), pC = new Float32Array(cols);
   const loudest = new Int32Array(cols).fill(-1);
   for (let i = 0; i < n; i++) {
-    const F = fr[i], c = Math.min(cols - 1, Math.floor(F.t / state.duration * cols));
-    if (c < 0) continue;
+    const F = fr[i], c = Math.min(cols - 1, Math.floor(clamp(F.t / genDur, 0, 1) * cols));
     sumR[c] += F.rms; cnt[c]++;
     if (F.pitch > 0 && F.rms > st.gate) { pS[c] += Math.log(F.pitch); pC[c]++; }
     if (loudest[c] < 0 || F.rms > fr[loudest[c]].rms) loudest[c] = i;
   }
-  const yRow = r => m + (r + 0.5) * rowH;
-  const hole = (x, y) => {
-    const w = colW * 0.5, h = rowH * 0.68, r = Math.min(w, h) * 0.3, x0 = x - w / 2, y0 = y - h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x0 + r, y0); ctx.lineTo(x0 + w - r, y0); ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
-    ctx.lineTo(x0 + w, y0 + h - r); ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h);
-    ctx.lineTo(x0 + r, y0 + h); ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r);
-    ctx.lineTo(x0, y0 + r); ctx.quadraticCurveTo(x0, y0, x0 + r, y0); ctx.closePath();
-    ctx.fillStyle = ink(0.88); ctx.shadowColor = ink(0.5); ctx.shadowBlur = 0.8 * SCALE; ctx.fill(); ctx.shadowBlur = 0;
-  };
+  const vRow = r => 1 - M - (r + 0.5) * rowH, hh = rowH * 0.34;
   for (let c = 0; c < cols; c++) {
     if (!cnt[c]) continue;
-    const x = (c + 0.5) * colW, avg = sumR[c] / cnt[c];
+    const x = UM + (c + 0.5) * colW, avg = sumR[c] / cnt[c];
     const loud = avg < st.gate ? 0 : Math.round(clamp(avg / st.rmsP95, 0, 1) * 255);
     let tone = 0;
     if (loud > 0) {
@@ -574,79 +609,572 @@ function drawBits(fr, st, W, H, m) {
       if (!f) { const F = fr[loudest[c]]; let bMax = 6; for (let b = 6; b < NB; b++) if (F.L[b] > F.L[bMax]) bMax = b; f = bandCenter(bMax); }
       tone = Math.round(clamp(Math.log(f / 80) / Math.log(2000 / 80), 0, 1) * 254) + 1;
     }
-    dot(x, yRow(8), rowH * 0.14, 0.75);
-    for (let bit = 0; bit < 8; bit++) {
-      if ((loud >> (7 - bit)) & 1) hole(x, yRow(bit));
-      if ((tone >> (7 - bit)) & 1) hole(x, yRow(9 + bit));
+    const order = [...Array(rows).keys()];
+    if (c % 2) order.reverse();
+    for (const r of order) {
+      if (r === 8) { out.push({ pts: [[x, vRow(8)]], dark: 0.9, dwell: CFG.dot_dwell_max_s * 0.3 }); continue; }
+      const on = r < 8 ? (loud >> (7 - r)) & 1 : (tone >> (16 - r)) & 1;
+      if (!on) continue;
+      const y = vRow(r), a = [x, y + hh], b = [x, y - hh];
+      out.push({ pts: c % 2 ? [b, a] : [a, b], dark: 0.9, dwell: 0 });
     }
   }
+  return out;
 }
 
-function render() {
-  const L = layout(); lastLayout = L;
-  const c = els.cloth, bw = Math.round(L.cssW * L.dpr), bh = Math.round(L.cssH * L.dpr);
-  if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; }
-  c.style.width = L.cssW + 'px'; c.style.height = L.cssH + 'px';
-  els.stage.style.width = L.cssW + 'px';
-  SCALE = L.s; pal = PALETTES[state.material];
-  const { W, H } = L, m = H * 0.07;
-  ctx.setTransform(L.s, 0, 0, L.s, 0, 0);
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.fillStyle = pal.paper; ctx.fillRect(0, 0, W, H);
-  ctx.globalCompositeOperation = 'multiply';
-  if (state.raster) drawRaster(W, H);
-  let st = null;
-  if (state.frames.length > 2) {
-    st = analyse(state.frames);
-    if (state.mode === 'walze') drawWalze(state.frames, st, W, H, m);
-    else if (state.mode === 'stern') drawStern(state.frames, st, W, H, m);
-    else if (state.mode === 'bits') drawBits(state.frames, st, W, H, m);
-    else drawLicht(state.frames, st, W, H, m);
+function genTest(G) {
+  const out = [];
+  out.push({ pts: [[UM, M], [1 - UM, M], [1 - UM, 1 - M], [UM, 1 - M], [UM, M]], dark: 0.5, dwell: 0 });
+  CFG.test_speeds_mps.forEach((v, i) => out.push({ pts: [[0.08, 0.86 - i * 0.09], [0.58, 0.86 - i * 0.09]], speed: v, dark: 0.5, dwell: 0 }));
+  CFG.test_dwells_s.forEach((d, i) => out.push({ pts: [[0.1 + i * 0.11, 0.3]], dark: 0.5, dwell: d }));
+  const rCm = 8, cu = 0.8, cv = 0.62, circ = [];
+  for (let k = 0; k <= 48; k++) circ.push([cu + rCm / G.arcCm * Math.cos(TAU * k / 48), cv + rCm / G.hCm * Math.sin(TAU * k / 48)]);
+  out.push({ pts: circ, dark: 0.6, dwell: 0 });
+  out.push({ pts: [[0.8, 0.12], [0.8, 0.4]], dark: 0.6, dwell: 0 });
+  return out;
+}
+
+function genLapTest() {
+  return [{ pts: [[UM, M], [1 - UM, M], [1 - UM, 1 - M], [UM, 1 - M], [UM, M]], dark: 0.5, dwell: 0 },
+          { pts: [[UM, M], [1 - UM, 1 - M]], dark: 0.5, dwell: 0 }];
+}
+
+function median(a) { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; }
+
+function simplify(pts, tol, G) {
+  if (pts.length < 3) return pts;
+  const cm = p => [p[0] * G.arcCm, p[1] * G.hCm];
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(), A = cm(pts[a]), B = cm(pts[b]);
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1e-9;
+    let best = -1, bi = -1;
+    for (let i = a + 1; i < b; i++) {
+      const P = cm(pts[i]), d = Math.abs(dy * (P[0] - A[0]) - dx * (P[1] - A[1])) / L;
+      if (d > best) { best = d; bi = i; }
+    }
+    if (best > tol) { keep[bi] = 1; stack.push([a, bi], [bi, b]); }
   }
-  if (!weave) weave = makeWeave();
-  const pat = ctx.createPattern(weave, 'repeat');
-  if (pat && pat.setTransform && window.DOMMatrix) pat.setTransform(new DOMMatrix().scale(1.4 / L.s));
-  ctx.shadowBlur = 0; ctx.globalAlpha = 0.85; ctx.fillStyle = pat; ctx.fillRect(0, 0, W, H);
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  renderRuler(L);
-  els.source.textContent = state.source;
-  els.meta.textContent = state.frames.length
-    ? `${fmt(state.duration)} auf ${state.umfang} cm · ${state.frames.length} Messpunkte` + (st ? ` · ${st.onsetCount} Toneinsätze` : '')
-    : '';
+  return pts.filter((_, i) => keep[i]);
 }
 
-function renderRuler(L) {
-  const r = els.ruler, h = 30, dpr = L.dpr;
+function voicedRuns(fr, st, maxGap) {
+  const runs = [];
+  for (let i = 0; i < fr.length; i++) {
+    if (!(fr[i].pitch > 0 && fr[i].rms > st.gate)) continue;
+    const r = runs[runs.length - 1];
+    if (r && fr[i].t - fr[r[r.length - 1]].t <= maxGap) r.push(i); else runs.push([i]);
+  }
+  return runs.filter(r => fr[r[r.length - 1]].t - fr[r[0]].t >= 0.12);
+}
+
+function genMelodie(fr, st, G) {
+  const runs = voicedRuns(fr, st, 0.12), out = [];
+  if (!runs.length) return out;
+  const all = [];
+  runs.forEach(r => r.forEach(i => all.push(Math.log(fr[i].pitch))));
+  const lo = pct(all, 0.05) - 0.15, hi = Math.max(pct(all, 0.95) + 0.15, lo + 0.7);
+  const vOf = lp => M + (1 - 2 * M) * clamp((lp - lo) / (hi - lo), 0, 1);
+  let rises = 0;
+  for (const r of runs) {
+    const lp = r.map(i => Math.log(fr[i].pitch));
+    const sm = lp.map((_, k) => median(lp.slice(Math.max(0, k - 2), k + 3)));
+    const pts = simplify(r.map((i, k) => [uOf(fr[i].t), vOf(sm[k])]), 0.4, G);
+    const loud = clamp(r.reduce((s, i) => s + fr[i].rms, 0) / r.length / st.rmsP95, 0, 1);
+    out.push({ pts, dark: clamp(0.3 + 0.7 * loud, 0, 1), dwell: 0 });
+    const tail = sm.slice(-6);
+    if (tail.length >= 4 && (tail[tail.length - 1] - tail[0]) * 12 / Math.LN2 > 2) {
+      const e = pts[pts.length - 1];
+      out.push({ pts: [[e[0], clamp(e[1] + 2.5 / G.hCm, 0, 1)]], dark: 0.8, dwell: CFG.dot_dwell_max_s });
+      rises++;
+    }
+  }
+  genInfo = { phrases: runs.length, rises };
+  return out;
+}
+
+function wordSegments(fr, st) {
+  const n = fr.length, env = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0, c = 0;
+    for (let j = Math.max(0, i - 1); j <= Math.min(n - 1, i + 1); j++) { s += fr[j].rms; c++; }
+    env[i] = s / c;
+  }
+  const th = Math.max(st.gate * 1.5, 0.15 * st.rmsP95), segs = [];
+  let s0 = -1;
+  for (let i = 0; i <= n; i++) {
+    const on = i < n && env[i] > th;
+    if (on && s0 < 0) s0 = i;
+    if (!on && s0 >= 0) { segs.push([s0, i - 1]); s0 = -1; }
+  }
+  const merged = [];
+  for (const sg of segs) {
+    const last = merged[merged.length - 1];
+    if (last && fr[sg[0]].t - fr[last[1]].t < 0.08) last[1] = sg[1]; else merged.push([sg[0], sg[1]]);
+  }
+  return merged.filter(([a, b]) => fr[b].t - fr[a].t >= 0.06).map(([a, b]) => {
+    let peak = 0;
+    for (let i = a; i <= b; i++) peak = Math.max(peak, env[i]);
+    return { t: (fr[a].t + fr[b].t) / 2, len: fr[b].t - fr[a].t, loud: clamp(peak / st.rmsP95, 0, 1) };
+  });
+}
+
+function genWorte(fr, st) {
+  const words = wordSegments(fr, st), out = [];
+  words.forEach((w, k) => {
+    const x = uOf(w.t), dark = clamp(0.35 + 0.65 * w.loud, 0, 1);
+    if (k % 5 === 4) {
+      out.push({ pts: [[uOf(words[k - 4].t) - 0.01, 0.3], [x + 0.01, 0.7]], dark, dwell: 0 });
+      return;
+    }
+    const half = (0.12 + 0.3 * clamp(w.len / 0.6, 0, 1)) * (1 - 2 * M), a = [x, 0.5 - half], b = [x, 0.5 + half];
+    out.push({ pts: k % 2 ? [b, a] : [a, b], dark, dwell: 0 });
+  });
+  genInfo = { words: words.length };
+  return out;
+}
+
+function generateFrom(frames, duration, mode) {
+  const G = geom();
+  genInfo = {};
+  if (mode === 'test') return genTest(G);
+  if (frames.length <= 2) return [];
+  genDur = duration;
+  const st = analyse(frames);
+  genInfo = { onsets: st.onsetCount };
+  if (mode === 'walze') return genWalze(frames, st);
+  if (mode === 'stern') return genStern(frames, st, G);
+  if (mode === 'bits') return genBits(frames, st, G);
+  if (mode === 'melodie') return genMelodie(frames, st, G);
+  if (mode === 'worte') return genWorte(frames, st);
+  return genLicht(frames, st, G);
+}
+
+function generate() {
+  const paths = generateFrom(state.frames, state.duration, state.mode);
+  state.info = genInfo;
+  return paths;
+}
+
+function pathSpeed(p) {
+  const v = p.speed != null ? p.speed : CFG.draw_speed_light_mps - p.dark * (CFG.draw_speed_light_mps - CFG.draw_speed_dark_mps);
+  return clamp(v, 0.001, CFG.vmax || 0.25);
+}
+function densifyU(pts) {
+  const step = CFG.max_step_deg / CFG.job_arc_deg, out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [u0, v0] = pts[i - 1], [u1, v1] = pts[i], k = Math.max(1, Math.ceil(Math.abs(u1 - u0) / step - 1e-6));
+    for (let j = 1; j <= k; j++) out.push([u0 + (u1 - u0) * j / k, v0 + (v1 - v0) * j / k]);
+  }
+  return out;
+}
+const exposure = s => 1 - Math.exp(-1.6 * s / (CFG.spot_diameter_m / CFG.draw_speed_dark_mps));
+let pal = PALETTES.washed, weave = null;
+const ink = a => `rgba(${pal.ink[0]},${pal.ink[1]},${pal.ink[2]},${clamp(a * pal.k, 0, 1)})`;
+
+function makeWeave() {
+  const c = document.createElement('canvas'); c.width = c.height = 96;
+  const g = c.getContext('2d'), img = g.createImageData(96, 96), rnd = mulberry32(11);
+  for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) {
+    let v = 250 + (rnd() - 0.5) * 9;
+    if (x % 3 === 0) v -= 5;
+    if (y % 4 === 1) v -= 4;
+    v = clamp(v, 0, 255);
+    const o = (y * 96 + x) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = v; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+function dot(g, x, y, r, a) {
+  const R = r * 1.6;
+  const gr = g.createRadialGradient(x, y, 0, x, y, R);
+  gr.addColorStop(0, ink(a)); gr.addColorStop(0.55, ink(a * 0.85)); gr.addColorStop(1, ink(0));
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill();
+}
+
+function exposePath(g, pts, speed, dwell, spot) {
+  const bead = exposure(CFG.point_dwell_s);
+  if (pts.length > 1) {
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = spot;
+    g.strokeStyle = ink(exposure(CFG.spot_diameter_m / speed));
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.stroke();
+    for (let i = 1; i < pts.length; i++) dot(g, pts[i][0], pts[i][1], spot * 0.45, bead);
+  }
+  dot(g, pts[0][0], pts[0][1], spot * 0.5, exposure(dwell + CFG.point_dwell_s));
+}
+
+function orderLines(g, list, w, color) {
+  if (!state.showOrder || list.length < 2) return;
+  g.save(); g.globalCompositeOperation = 'source-over';
+  g.strokeStyle = color; g.lineWidth = w; g.setLineDash([w * 2, w * 3]);
+  g.beginPath();
+  for (let i = 1; i < list.length; i++) {
+    const a = list[i - 1][list[i - 1].length - 1], b = list[i][0];
+    g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
+  }
+  g.stroke(); g.restore();
+}
+
+function fitCanvas(c, stage, wCm, hCm, maxH) {
+  const avail = Math.max(200, stage.parentElement.clientWidth - 36);
+  let cssW = avail, cssH = cssW * hCm / wCm;
+  if (cssH > maxH) { cssH = maxH; cssW = cssH * wCm / hCm; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(cssW * dpr); c.height = Math.round(cssH * dpr);
+  c.style.width = Math.round(cssW) + 'px'; c.style.height = Math.round(cssH) + 'px';
+  stage.style.width = Math.round(cssW) + 'px';
+  return { cssW: Math.round(cssW), cssH: Math.round(cssH), dpr, s: c.width / wCm };
+}
+
+function paper(g, W, H, s) {
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  g.fillStyle = pal.paper; g.fillRect(0, 0, W, H);
+}
+function finishCloth(g, W, H, s) {
+  if (!weave) weave = makeWeave();
+  const pat = g.createPattern(weave, 'repeat');
+  if (pat && pat.setTransform && window.DOMMatrix) pat.setTransform(new DOMMatrix().scale(1.4 / s));
+  g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.85; g.fillStyle = pat; g.fillRect(0, 0, W, H);
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+}
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+let patLayout = null;
+function renderPattern() {
+  const G = geom();
+  pal = PALETTES[state.material];
+  state.paths = generate();
+  const L = fitCanvas(els.pattern, els.stage, G.arcCm, G.hCm, 480); patLayout = L;
+  const g = els.pattern.getContext('2d');
+  g.setTransform(L.s, 0, 0, L.s, 0, 0);
+  paper(g, G.arcCm, G.hCm, L.s);
+  g.globalCompositeOperation = 'multiply';
+  const toCm = p => [p[0] * G.arcCm, (1 - p[1]) * G.hCm];
+  const list = [];
+  let len = 0, time = 0;
+  for (const p of state.paths) {
+    const pts = densifyU(p.pts).map(toCm), v = pathSpeed(p);
+    exposePath(g, pts, v, p.dwell || 0, G.spotCm);
+    list.push(pts);
+    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    time += (p.dwell || 0) + pts.length * CFG.point_dwell_s;
+    for (let i = 1; i < pts.length; i++) time += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) / 100 / v;
+  }
+  finishCloth(g, G.arcCm, G.hCm, L.s);
+  orderLines(g, list, 0.25, cssVar('--uv'));
+  renderPatRuler(L, G);
+  els.patInfo.textContent = `${state.paths.length} Pfade · ${(len / 100).toFixed(2)} m Licht · ${G.arcCm.toFixed(0)} × ${G.hCm.toFixed(0)} cm (${CFG.job_arc_deg}° × ${CFG.height_min_m.toFixed(2)}…${CFG.height_max_m.toFixed(2)} m)`;
+  const total = time + state.paths.length * CFG.est_path_overhead_s;
+  updatePlay();
+  els.patTime.textContent = `Zeichenzeit geschätzt ca. ${fmt(total)} (Licht ${fmt(time)}, dazu ${state.paths.length} × ${CFG.est_path_overhead_s} s Fahrwege)`;
+  els.source.textContent = state.mode === 'test' ? 'Testmuster (ohne Ton)' : state.source;
+  const inf = state.info || {};
+  const extra = inf.words != null ? ` · ${inf.words} Wörter (geschätzt)` : inf.phrases != null ? ` · ${inf.phrases} Phrasen, ${inf.rises} steigen am Schluss` : inf.onsets != null ? ` · ${inf.onsets} Toneinsätze` : '';
+  els.meta.textContent = state.mode !== 'test' && state.frames.length ? `${fmt(state.duration)} Ton auf ${G.arcCm.toFixed(0)} cm Bogen` + extra : '';
+  updateButtons();
+}
+
+function renderPatRuler(L, G) {
+  const r = els.patRuler, h = 30, dpr = L.dpr;
   r.width = Math.round(L.cssW * dpr); r.height = Math.round(h * dpr);
   r.style.width = L.cssW + 'px'; r.style.height = h + 'px';
   const g = r.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, L.cssW, h);
-  const cs = getComputedStyle(document.documentElement);
-  const lineC = cs.getPropertyValue('--muted').trim() || '#666', textC = cs.getPropertyValue('--fg').trim() || '#111';
-  g.strokeStyle = lineC; g.lineWidth = 1;
-  g.font = '11px "IBM Plex Mono", ui-monospace, monospace'; g.textBaseline = 'alphabetic';
-  const pxPerM = L.cssW * 100 / state.umfang;
-  for (let cm = 0; cm <= state.umfang; cm += 10) {
-    const x = Math.round(cm / state.umfang * (L.cssW - 1)) + 0.5;
-    const len = cm % 100 === 0 ? 11 : cm % 50 === 0 ? 7 : 3;
-    if (pxPerM < 60 && cm % 50 !== 0) continue;
-    g.globalAlpha = cm % 100 === 0 ? 0.9 : 0.5;
-    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, len); g.stroke();
-    if (cm % 100 === 0 && cm < state.umfang && pxPerM >= 70) {
-      g.globalAlpha = 1; g.fillStyle = textC;
-      g.fillText(`${cm / 100} m`, x + 4, 24);
-      g.fillStyle = lineC;
-      g.fillText(fmt(state.duration * cm / state.umfang), x + 4 + g.measureText(`${cm / 100} m `).width + 2, 24);
+  g.strokeStyle = cssVar('--muted'); g.fillStyle = cssVar('--fg'); g.lineWidth = 1;
+  g.font = '11px "IBM Plex Mono", ui-monospace, monospace';
+  for (let cm = 0; cm <= G.arcCm; cm += 10) {
+    const x = Math.round(cm / G.arcCm * (L.cssW - 1)) + 0.5;
+    g.globalAlpha = cm % 50 === 0 ? 0.9 : 0.5;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, cm % 50 === 0 ? 9 : 4); g.stroke();
+    if (cm % 20 === 0 && cm < G.arcCm - 8) {
+      g.globalAlpha = 1;
+      const t = state.mode === 'test' ? '' : ' · ' + fmt(state.duration * clamp((cm / G.arcCm - UM) / (1 - 2 * UM), 0, 1));
+      g.fillText(`${cm} cm${t}`, x + 3, 24);
     }
   }
   g.globalAlpha = 1;
 }
 
-let queued = false;
-function requestRender() {
-  if (queued) return;
-  queued = true;
-  setTimeout(() => { queued = false; render(); }, state.recording ? 120 : 0);
+function clothJobs() {
+  if (robot.online && robot.plan) return robot.plan.jobs;
+  if (!state.paths.length) return [];
+  const span = CFG.height_max_m - CFG.height_min_m;
+  return [{ id: 0, name: 'Vorschau', state: 'wartet', lap: 1, a0: 0, a1: CFG.job_arc_deg, paths: state.paths.map(p => ({
+    p: densifyU(p.pts).map(([u, v]) => [clamp(u, 0, 1) * CFG.job_arc_deg, CFG.height_min_m + clamp(v, 0, 1) * span]),
+    v: pathSpeed(p), d: p.dwell || 0 })) }];
+}
+
+function renderCloth() {
+  const G = geom(), W = G.circCm, H = G.clothCm;
+  pal = PALETTES[state.material];
+  const L = fitCanvas(els.cloth, els.clothStage, W, H, 420);
+  const g = els.cloth.getContext('2d');
+  g.setTransform(L.s, 0, 0, L.s, 0, 0);
+  const X = a => a / 360 * W, Y = h => (CFG.cloth_bottom_m + CFG.cloth_height_m - h) * 100;
+  paper(g, W, H, L.s);
+  const uv = cssVar('--uv'), muted = cssVar('--muted');
+  g.save();
+  g.fillStyle = 'rgba(120,128,140,0.16)';
+  g.fillRect(0, 0, W, Y(CFG.height_max_m)); g.fillRect(0, Y(CFG.height_min_m), W, H - Y(CFG.height_min_m));
+  g.strokeStyle = 'rgba(120,128,140,0.22)'; g.lineWidth = 0.4;
+  for (let x = -H; x < W; x += 4) {
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + Y(CFG.height_max_m), Y(CFG.height_max_m)); g.stroke();
+    g.beginPath(); g.moveTo(x, Y(CFG.height_min_m)); g.lineTo(x + (H - Y(CFG.height_min_m)), H); g.stroke();
+  }
+  g.fillStyle = muted; g.font = '4px "IBM Plex Mono", monospace';
+  g.fillText('nicht erreichbar', 3, 6);
+  g.setLineDash([1.2, 1.2]); g.strokeStyle = 'rgba(120,128,140,0.6)'; g.lineWidth = 0.3;
+  for (let a = CFG.job_arc_deg; a < 360; a += CFG.job_arc_deg) { g.beginPath(); g.moveTo(X(a), Y(CFG.height_max_m)); g.lineTo(X(a), Y(CFG.height_min_m)); g.stroke(); }
+  g.restore();
+  const jobs = clothJobs();
+  g.globalCompositeOperation = 'multiply';
+  const ordered = [];
+  for (const j of jobs) {
+    if (!j.paths) continue;
+    const done = j.state !== 'wartet' && j.state !== 'zeichnet';
+    const upto = j.state === 'fertig' ? j.paths.length : (j.progress || 0);
+    j.paths.forEach((p, i) => {
+      const pts = p.p.map(([a, h]) => [X(a), Y(h)]);
+      if (i < upto) exposePath(g, pts, p.v, p.d, G.spotCm);
+      else if (!done) ordered.push({ pts, live: j.state === 'zeichnet' });
+    });
+  }
+  finishCloth(g, W, H, L.s);
+  g.save();
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const o of ordered) {
+    g.strokeStyle = uv; g.globalAlpha = o.live ? 0.9 : 0.45; g.lineWidth = o.live ? 0.6 : 0.4;
+    if (o.pts.length > 1) { g.beginPath(); g.moveTo(o.pts[0][0], o.pts[0][1]); o.pts.slice(1).forEach(q => g.lineTo(q[0], q[1])); g.stroke(); }
+    else { g.beginPath(); g.arc(o.pts[0][0], o.pts[0][1], 0.6, 0, TAU); g.stroke(); }
+  }
+  g.globalAlpha = 0.8;
+  orderLines(g, ordered.map(o => o.pts), 0.25, uv);
+  g.restore();
+  g.save();
+  g.strokeStyle = cssVar('--fg'); g.lineWidth = 0.8;
+  g.beginPath(); g.moveTo(0.4, 0); g.lineTo(0.4, H); g.moveTo(W - 0.4, 0); g.lineTo(W - 0.4, H); g.stroke();
+  g.fillStyle = cssVar('--fg'); g.font = '4px "IBM Plex Mono", monospace';
+  g.fillText('Start / Naht', 2, H - 2);
+  const live = robot.online && robot.status && robot.status.live;
+  if (live && live.a != null) {
+    const x = X(clamp(live.a, 0, 360)), y = Y(live.h);
+    g.strokeStyle = uv; g.lineWidth = 0.6; g.setLineDash([1.5, 1]);
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); g.setLineDash([]);
+    g.fillStyle = uv; g.globalAlpha = live.facing === 'tuch' ? 0.9 : 0.35;
+    g.beginPath(); g.arc(x, y, live.facing === 'tuch' ? 2.2 : 1.6, 0, TAU); g.fill();
+    g.globalAlpha = 1; g.fillStyle = uv; g.font = '5px "IBM Plex Mono", monospace';
+    const label = `Arm ${live.a.toFixed(1)}° · Lampe ${lampText(live.facing)}`;
+    g.fillText(label, x + 3 > W - 60 ? x - 62 : x + 3, 7);
+  }
+  g.restore();
+  renderClothRuler(L, W);
+  const lap = robot.online && robot.status ? robot.status.lap : 1;
+  els.clothInfo.textContent = `Runde ${lap} · Umfang ${(W / 100).toFixed(2)} m · Tuchhöhe ${(H / 100).toFixed(2)} m · erreichbar ${CFG.height_min_m.toFixed(2)}…${CFG.height_max_m.toFixed(2)} m über der Basis`;
+}
+
+function renderClothRuler(L, W) {
+  const r = els.clothRuler, h = 30, dpr = L.dpr;
+  r.width = Math.round(L.cssW * dpr); r.height = Math.round(h * dpr);
+  r.style.width = L.cssW + 'px'; r.style.height = h + 'px';
+  const g = r.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, L.cssW, h);
+  g.strokeStyle = cssVar('--muted'); g.fillStyle = cssVar('--fg'); g.lineWidth = 1;
+  g.font = '11px "IBM Plex Mono", ui-monospace, monospace';
+  for (let a = 0; a <= 360; a += 15) {
+    const x = Math.round(a / 360 * (L.cssW - 1)) + 0.5, major = a % CFG.job_arc_deg === 0 || a % 90 === 0;
+    g.globalAlpha = major ? 0.9 : 0.4;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, major ? 9 : 4); g.stroke();
+    if (a % 90 === 0 && a < 360) { g.globalAlpha = 1; g.fillText(`${a}° · ${(CFG.cloth_radius_m * rad(a)).toFixed(2)} m`, x + 3, 24); }
+  }
+  g.globalAlpha = 1;
+}
+
+function lampText(f) {
+  return f === 'tuch' ? 'aufs Tuch' : f === 'unten' ? 'nach unten' : f === 'kippt' ? 'kippt' : '?';
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function updateButtons() {
+  const s = robot.status, ok = robot.online && s && !s.estop;
+  els.send.disabled = !ok || !state.paths.length || state.recording || state.busy;
+  els.lapTest.disabled = !ok;
+  els.clearQ.disabled = !robot.online;
+  els.clothReset.disabled = !robot.online;
+  els.estop.disabled = !robot.online;
+  els.reset.hidden = !(robot.online && s && s.estop);
+}
+
+function renderStatus() {
+  const s = robot.status;
+  if (!robot.online || !s) {
+    els.badge.dataset.target = 'off'; els.badge.textContent = 'Offline · nur Vorschau';
+    els.robotHint.hidden = false;
+    ['rTarget', 'rConn', 'rLap', 'rAngle', 'rHeight', 'rLamp', 'rStep', 'rJob', 'rQueue'].forEach(k => els[k].textContent = '–');
+    els.rErrBox.hidden = true;
+    updateButtons();
+    return;
+  }
+  els.robotHint.hidden = true;
+  els.badge.dataset.target = s.target;
+  els.badge.textContent = (s.target === 'sim' ? 'Simulator · ' : 'ECHTER ROBOTER · ') + s.host + (s.estop ? ' · NOT-AUS' : '');
+  els.rTarget.textContent = s.target === 'sim' ? `Simulator (${s.host})` : `Echter Roboter (${s.host})`;
+  els.rConn.textContent = s.connected ? 'verbunden' : 'nicht verbunden';
+  els.rLap.textContent = `${s.lap} · nächster Auftrag ab ${s.cursor.toFixed(0)}°`;
+  const lv = s.live || {};
+  els.rAngle.textContent = lv.a != null ? `${lv.a.toFixed(1)}° (Basisgelenk ${lv.base_deg}°)` : '–';
+  els.rHeight.textContent = lv.h != null ? `${lv.h.toFixed(3)} m über der Basis` : '–';
+  els.rLamp.textContent = lv.facing ? `immer an · zeigt ${lampText(lv.facing)}` + (lv.gap != null ? ` · ${(lv.gap * 100).toFixed(1)} cm vom Tuch` : ` · ${(lv.r * 100).toFixed(0)} cm von der Achse`) : 'immer an · Richtung unbekannt';
+  els.rStep.textContent = (s.rewinding ? 'Rücklauf · ' : '') + (s.step || '–');
+  els.rJob.textContent = s.current ? `#${s.current.id} ${s.current.name} · Runde ${s.current.lap}, ${s.current.a0.toFixed(0)}°–${s.current.a1.toFixed(0)}° · Pfad ${Math.min((s.current.progress || 0) + 1, s.current.npaths)}/${s.current.npaths}` : 'nichts';
+  els.rQueue.innerHTML = '';
+  if (!s.queue.length) els.rQueue.textContent = 'leer' + (s.dropped ? ` · ${s.dropped} verworfen` : '');
+  else {
+    const ol = document.createElement('ol'); ol.className = 'queue';
+    const planned = robot.plan ? new Map(robot.plan.jobs.map(j => [j.id, j])) : new Map();
+    s.queue.forEach(q => {
+      const li = document.createElement('li'), p = planned.get(q.id);
+      li.textContent = `#${q.id} ${q.name} · ${q.npaths} Pfade · ausgelöst ${new Date(q.trigger * 1000).toLocaleTimeString('de-CH')}` + (p ? ` · Runde ${p.lap}, ab ${p.a0.toFixed(0)}°${p.rewind ? ', vorher Rücklauf' : ''}` : '');
+      ol.append(li);
+    });
+    els.rQueue.append(ol);
+    if (s.dropped) els.rQueue.append(document.createTextNode(`${s.dropped} verworfen`));
+  }
+  const err = [s.error, s.estop_msg].filter(Boolean).join(' · ');
+  els.rErrBox.hidden = !err; els.rErr.textContent = err;
+  updateButtons();
+}
+
+async function poll() {
+  try {
+    const s = await api('/api/status');
+    if (!robot.online) {
+      try { CFG = Object.assign({}, CFG, await api('/api/config')); } catch (e) {}
+      robot.online = true; updateModeText(); renderPattern();
+      els.recSecs.textContent = CFG.recording_s; els.gapSecs.textContent = CFG.gap_keep_s;
+      els.maxSecs.textContent = CFG.recording_max_s; els.minSecs.textContent = CFG.min_sound_s;
+    }
+    robot.status = s;
+    if (s.version !== robot.planVersion) { robot.plan = await api('/api/plan'); robot.planVersion = robot.plan.version; }
+  } catch (e) {
+    if (robot.online) { robot.online = false; robot.plan = null; robot.planVersion = -1; }
+  }
+  renderStatus(); renderCloth();
+  setTimeout(poll, robot.online ? 300 : 2000);
+}
+
+function concatAudio(chunks) {
+  let n = 0;
+  chunks.forEach(c => { n += c.length; });
+  const o = new Float32Array(n);
+  let q = 0;
+  chunks.forEach(c => { o.set(c, q); q += c.length; });
+  return o;
+}
+
+function joinAudio(parts, sr) {
+  const F = Math.round(0.005 * sr), o = concatAudio(parts);
+  let q = 0;
+  parts.forEach((c, i) => {
+    if (i > 0) for (let k = 0; k < F && q + k < o.length; k++) o[q + k] *= k / F;
+    q += c.length;
+    if (i < parts.length - 1) for (let k = 0; k < F && q - 1 - k >= 0; k++) o[q - 1 - k] *= k / F;
+  });
+  return { samples: o, sr };
+}
+
+function cutAudio(chunks, base, keep, sr) {
+  const hop = Math.round(sr / FPS), raw = concatAudio(chunks), parts = [];
+  let cur = null;
+  for (const e of keep) {
+    const a = Math.max(0, e - hop - base), b = Math.min(raw.length, e - base);
+    if (b <= a) continue;
+    if (cur && a <= cur[1] + hop) { cur[1] = Math.max(cur[1], b); continue; }
+    if (cur) parts.push(cur);
+    cur = [a, b];
+  }
+  if (cur) parts.push(cur);
+  return parts.length ? joinAudio(parts.map(([a, b]) => raw.subarray(a, b)), sr) : null;
+}
+
+let pctx = null, player = null;
+function updatePlay() {
+  els.play.disabled = !state.audio;
+  els.play.textContent = player ? '■ Stopp' : '▶ Anhören';
+}
+function stopPlay() {
+  if (player) {
+    const p = player;
+    player = null;
+    try { p.src.stop(); } catch (e) {}
+    cancelAnimationFrame(p.raf);
+    if (!state.recording && !liveMic) els.lamp.hidden = true;
+  }
+  updatePlay();
+}
+function setAudio(a) {
+  stopPlay();
+  state.audio = a;
+  updatePlay();
+}
+async function togglePlay() {
+  if (player) { stopPlay(); return; }
+  const a = state.audio;
+  if (!a) return;
+  if (!pctx) pctx = new (window.AudioContext || window.webkitAudioContext)();
+  try { await pctx.resume(); } catch (e) {}
+  const buf = pctx.createBuffer(1, a.samples.length, a.sr);
+  buf.copyToChannel(a.samples, 0);
+  const src = pctx.createBufferSource();
+  src.buffer = buf; src.connect(pctx.destination);
+  const t0 = pctx.currentTime, len = a.samples.length / a.sr;
+  player = { src, raf: 0 };
+  src.onended = () => { if (player && player.src === src) stopPlay(); };
+  src.start();
+  const step = () => {
+    if (!player || player.src !== src) return;
+    if (!state.recording && !liveMic) moveLamp((pctx.currentTime - t0) / len * state.duration, 'Wiedergabe');
+    player.raf = requestAnimationFrame(step);
+  };
+  step();
+  updatePlay();
+}
+
+function autoSend(label) {
+  if (!els.autoSend.checked) return;
+  if (state.mode === 'test') { showMsg(`${label} fertig. Testmuster ist gewählt, deshalb nicht automatisch gesendet.`); return; }
+  if (!robot.online || !robot.status || robot.status.estop) { showMsg(`${label} fertig, nicht gesendet: kein Server oder NOT-AUS aktiv.`); return; }
+  sendJob();
+}
+
+async function sendJob() {
+  if (!state.paths.length) return;
+  const M_ = MODES[state.mode];
+  try {
+    const r = await api('/api/jobs', { name: `${M_.name}${state.mode === 'test' ? '' : ' · ' + (state.sourceShort || '')}`, mode: state.mode,
+      trigger: Date.now() / 1000, paths: state.paths });
+    showMsg(`Auftrag #${r.id} in der Warteschlange.` + (r.dropped ? ` Auftrag #${r.dropped} wurde verworfen (Warteschlange voll).` : ''));
+  } catch (e) { showMsg('Auftrag abgelehnt: ' + e.message); }
+}
+async function sendLapTest() {
+  const n = Math.ceil(360 / CFG.job_arc_deg - 1e-9) + 1, t = Date.now() / 1000;
+  try {
+    for (let k = 1; k <= n; k++) await api('/api/jobs', { name: `Rundentest ${k}/${n}`, mode: 'test', trigger: t + k / 1000, paths: genLapTest() });
+    showMsg(`${n} Rundentest-Aufträge gesendet: ${n - 1} füllen eine Runde, der letzte löst den Rücklauf aus.`);
+  } catch (e) { showMsg('Rundentest abgelehnt: ' + e.message); }
+}
+async function estop() {
+  try { const r = await api('/api/estop', {}); showMsg('NOT-AUS: ' + r.msg + '. Die Lampe lässt sich nicht abschalten: decke sie ab oder drücke «Zurücksetzen und Lampe wegdrehen».'); }
+  catch (e) { showMsg('NOT-AUS konnte den Server nicht erreichen: roten Knopf am Handbediengerät drücken!'); }
 }
 
 /* ---------- sources ---------- */
@@ -654,10 +1182,11 @@ function setBusy(b) {
   state.busy = b;
   [els.demo, els.rec, els.dur].forEach(e => e.disabled = b);
   els.file.disabled = b;
+  updateButtons();
 }
 
 function generateDemo() {
-  const sr = 22050, dur = 40, buf = new Float32Array(sr * dur), rnd = mulberry32(7);
+  const sr = 22050, dur = 30, buf = new Float32Array(sr * dur), rnd = mulberry32(7);
   const tone = (t0, f, amp, decay) => {
     const s0 = Math.floor(t0 * sr), s1 = Math.min(buf.length, Math.floor((t0 + decay * 5) * sr));
     for (let i = s0; i < s1; i++) {
@@ -665,18 +1194,16 @@ function generateDemo() {
       buf[i] += amp * env * (Math.sin(TAU * f * tt) + 0.35 * Math.sin(TAU * 2 * f * tt) + 0.12 * Math.sin(TAU * 3 * f * tt));
     }
   };
-  // Spieldose
   const scale = [392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
   let idx = 4, t = 0.6;
-  while (t < 13.5) {
+  while (t < 10) {
     idx = clamp(idx + Math.floor(rnd() * 5) - 2, 0, scale.length - 1);
     tone(t, scale[idx], 0.22, 0.55);
     if (rnd() < 0.25 && idx >= 2) tone(t, scale[idx - 2], 0.14, 0.5);
     t += [0.25, 0.35, 0.5, 0.7][Math.floor(rnd() * 4)];
   }
-  // Schritte
-  t = 14.2;
-  while (t < 23.8) {
+  t = 10.5;
+  while (t < 17) {
     const s0 = Math.floor(t * sr);
     for (let i = s0; i < Math.min(buf.length, s0 + sr * 0.25); i++) {
       const tt = (i - s0) / sr;
@@ -684,17 +1211,15 @@ function generateDemo() {
     }
     t += 0.45 + rnd() * 0.15;
   }
-  // Maschine
-  for (let i = Math.floor(14 * sr); i < Math.floor(34 * sr); i++) {
-    const tt = i / sr, env = Math.sin(Math.PI * (tt - 14) / 20) * 0.06;
+  for (let i = Math.floor(10 * sr); i < Math.floor(25 * sr); i++) {
+    const tt = i / sr, env = Math.sin(Math.PI * (tt - 10) / 15) * 0.06;
     let v = Math.sin(TAU * 98 * tt) + 0.5 * Math.sin(TAU * 196 * tt) + 0.25 * Math.sin(TAU * 294 * tt);
-    if (tt > 18 && tt < 23) { const g = 400 + 500 * (tt - 18) / 5; v += 0.6 * Math.sin(TAU * g * (tt - 18) * 0.5 + TAU * 400 * (tt - 18)) * Math.sin(Math.PI * (tt - 18) / 5); }
+    if (tt > 13 && tt < 17) { const g = 400 + 500 * (tt - 13) / 4; v += 0.6 * Math.sin(TAU * g * (tt - 13) * 0.5 + TAU * 400 * (tt - 13)) * Math.sin(Math.PI * (tt - 13) / 4); }
     buf[i] += env * v;
   }
-  // Stimme
   const vowels = [[700, 1200], [400, 2000], [300, 900], [600, 1700]];
-  let s = 24.5, sentence = 0;
-  while (s < 33.5) {
+  let s = 18, sentence = 0;
+  while (s < 26.5) {
     const d = 0.18 + rnd() * 0.17, base = 150 + 60 * Math.sin(s * 0.9) + rnd() * 30;
     const form = vowels[Math.floor(rnd() * vowels.length)];
     const s0 = Math.floor(s * sr), len = Math.floor(d * sr), ph = new Float64Array(21);
@@ -712,61 +1237,75 @@ function generateDemo() {
     s += d + 0.05 + rnd() * 0.2;
     if (++sentence % 9 === 0) s += 0.5;
   }
-  tone(35.0, 659.25, 0.15, 0.6); tone(36.2, 523.25, 0.12, 0.8);
+  tone(27.0, 659.25, 0.15, 0.6); tone(28.2, 523.25, 0.12, 0.8);
   let p = 0; for (let i = 0; i < buf.length; i++) p = Math.max(p, Math.abs(buf[i]));
   const g = 0.85 / (p || 1); for (let i = 0; i < buf.length; i++) buf[i] *= g;
   return { samples: buf, sr };
 }
 
-async function loadDemo() {
+async function loadDemo(fromUser) {
   if (state.recording || state.busy) return;
   setBusy(true); showMsg('Beispiel-Tonspur wird analysiert …');
+  let ok = false;
   try {
     const { samples, sr } = generateDemo();
     state.frames = await extractSamples(samples, sr, p => showMsg(`Beispiel-Tonspur wird analysiert … ${Math.round(p * 100)} %`));
     state.duration = samples.length / sr;
-    state.source = 'Beispiel-Tonspur (synthetisch): Spieldose, Schritte, Maschine, Stimme';
+    setAudio({ samples, sr });
+    ok = true;
+    state.source = 'Beispiel-Tonspur (synthetisch, 30 s): Spieldose, Schritte, Maschine, Stimme';
     state.sourceShort = 'Beispiel';
     showMsg('');
-  } finally { setBusy(false); render(); }
+  } finally { setBusy(false); renderPattern(); renderCloth(); }
+  if (ok && fromUser === true) autoSend('Beispiel');
 }
 
 async function loadFile(file) {
   if (!file || state.recording || state.busy) return;
   setBusy(true); showMsg(`«${file.name}» wird gelesen …`);
+  let ok = false;
   try {
     const arr = await file.arrayBuffer();
     const tmp = new OfflineAudioContext(1, 1, 22050);
     const decoded = await tmp.decodeAudioData(arr);
-    const dur = Math.min(decoded.duration, 600);
+    const dur = Math.min(decoded.duration, 180);
     const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(dur * 22050)), 22050);
     const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start(0);
     const rendered = await off.startRendering();
     const samples = rendered.getChannelData(0);
     state.frames = await extractSamples(samples, 22050, p => showMsg(`«${file.name}» wird analysiert … ${Math.round(p * 100)} %`));
     state.duration = samples.length / 22050;
+    setAudio({ samples: new Float32Array(samples), sr: 22050 });
     state.source = `Datei: ${file.name}`;
-    state.sourceShort = 'Datei';
-    showMsg(decoded.duration > 600 ? 'Die Datei ist länger als 10 Minuten. Verwendet werden die ersten 10 Minuten.' : '');
+    state.sourceShort = file.name.slice(0, 30);
+    showMsg(decoded.duration > 180 ? 'Die Datei ist länger als 3 Minuten. Verwendet werden die ersten 3 Minuten.' : '');
+    ok = true;
   } catch (e) {
     showMsg('Diese Datei konnte nicht gelesen werden. Versuche eine MP3-, WAV- oder M4A-Datei.');
-  } finally { setBusy(false); els.file.value = ''; render(); }
+  } finally { setBusy(false); els.file.value = ''; renderPattern(); renderCloth(); }
+  if (ok) autoSend(`Datei «${file.name}»`);
 }
 
 let mic = null;
 function setRecUI(on) {
   els.rec.setAttribute('aria-pressed', String(on));
   els.recLabel.textContent = on ? 'Stopp' : 'Aufnahme starten';
-  [els.demo, els.dur, els.file, els.umfang, els.hoehe].forEach(e => e.disabled = on);
+  [els.demo, els.dur, els.file].forEach(e => e.disabled = on);
 }
-function moveLamp(t) {
-  const L = lastLayout; if (!L) return;
-  const x = clamp(t / state.duration, 0, 1) * L.cssW;
+function moveLamp(t, label) {
+  const L = patLayout; if (!L) return;
+  const x = (UM + (1 - 2 * UM) * clamp(t / state.duration, 0, 1)) * L.cssW;
+  els.lampLabel.textContent = label || 'Aufnahme';
   els.lamp.style.left = x + 'px'; els.lamp.style.height = L.cssH + 'px'; els.lamp.hidden = false;
-  if (!state.fit) els.scroller.scrollLeft = Math.max(0, x + 18 - els.scroller.clientWidth * 0.45);
+}
+let rq = false;
+function requestRender() {
+  if (rq) return;
+  rq = true;
+  setTimeout(() => { rq = false; renderPattern(); }, 150);
 }
 async function startRec() {
-  const blocked = 'Das Mikrofon ist nicht verfügbar. In der Claude-Ansicht ist es gesperrt: Öffne die HTML-Datei direkt im Browser (am besten Chrome) und erlaube dort den Mikrofonzugriff. Oder nimm eine Sprachmemo auf dem Handy auf und lade sie über «Audiodatei laden».';
+  const blocked = 'Das Mikrofon ist nicht verfügbar. Öffne die Seite über den Server (http://localhost:8765/) in Chrome und erlaube den Mikrofonzugriff. Oder lade eine Aufnahme über «Audiodatei laden».';
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showMsg(blocked); return; }
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); }
@@ -776,12 +1315,16 @@ async function startRec() {
   try { await actx.resume(); } catch (e) {}
   const src = actx.createMediaStreamSource(stream), an = actx.createAnalyser();
   an.fftSize = 2048; an.smoothingTimeConstant = 0; src.connect(an);
+  const proc = actx.createScriptProcessor(2048, 1, 1), chunks = [];
+  proc.onaudioprocess = e => { if (state.recording) chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+  src.connect(proc); proc.connect(actx.destination);
   const n = an.fftSize, td = new Float32Array(n), fd = new Float32Array(an.frequencyBinCount), mag = new Float32Array(an.frequencyBinCount);
+  setAudio(null);
   state.frames = []; state.duration = +els.dur.value; state.source = 'Mikrofon'; state.sourceShort = 'Mikrofon'; state.recording = true;
   showMsg('Aufnahme läuft. Sprich, singe, klopfe oder bewege dich im Raum.');
-  setRecUI(true); render();
+  setRecUI(true); renderPattern();
   const t0 = actx.currentTime;
-  mic = { stream, actx, timer: 0, t: 0 };
+  mic = { stream, actx, timer: 0, t: 0, proc, chunks };
   mic.timer = setInterval(() => {
     const t = actx.currentTime - t0; mic.t = t;
     if (t >= state.duration) { stopRec(true); return; }
@@ -795,16 +1338,325 @@ async function startRec() {
 function stopRec(auto) {
   if (!mic) return;
   clearInterval(mic.timer);
+  mic.proc.onaudioprocess = null;
   mic.stream.getTracks().forEach(tr => tr.stop());
+  const sr = mic.actx.sampleRate, audio = concatAudio(mic.chunks);
   mic.actx.close().catch(() => {});
   const t = mic.t; mic = null;
   state.recording = false; setRecUI(false); els.lamp.hidden = true;
-  showMsg(auto ? `Aufnahme fertig: ${fmt(state.duration)} auf ${state.umfang} cm Stoff verteilt.` : `Aufnahme nach ${fmt(t)} gestoppt. Der Rest des Tuchs bleibt unbelichtet.`);
-  render();
+  if (audio.length) setAudio({ samples: audio, sr });
+  showMsg(auto ? `Aufnahme fertig: ${fmt(state.duration)}.` : `Aufnahme nach ${fmt(t)} gestoppt. Der Rest des Auftrags bleibt unbelichtet.`);
+  renderPattern(); renderCloth();
+  autoSend('Aufnahme');
+}
+
+const MICS = [0, 1, 2].map(i => ({ i, deviceId: null, thr: null, stream: null, src: null, an: null, level: -100, rec: null, error: '', el: {} }));
+let mctx = null, micTimer = 0, micsActive = false, demoCache = null, liveMic = null;
+
+function showLive(m) {
+  if (state.recording || state.busy) return;
+  const r = m.rec;
+  if (state.audio) setAudio(null);
+  state.frames = r.frames; state.duration = CFG.recording_s;
+  state.source = `Mikrofon ${m.i + 1} nimmt auf: ${(r.frames.length / FPS).toFixed(1)} von ${CFG.recording_s} s Ton`;
+  state.sourceShort = `Mikrofon ${m.i + 1}`;
+  moveLamp(r.frames.length / FPS, `Mikrofon ${m.i + 1}`);
+  requestRender();
+}
+
+function releaseLive(m) {
+  if (liveMic !== m) return;
+  liveMic = MICS.find(x => x !== m && x.rec) || null;
+  if (!liveMic) els.lamp.hidden = true;
+}
+
+function loadMicPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('tonspur-mics') || '[]');
+    p.forEach((q, i) => { if (MICS[i] && q) { MICS[i].deviceId = q.deviceId == null ? null : q.deviceId; if (typeof q.thr === 'number') MICS[i].thr = q.thr; } });
+  } catch (e) {}
+}
+function saveMicPrefs() {
+  try { localStorage.setItem('tonspur-mics', JSON.stringify(MICS.map(m => ({ deviceId: m.deviceId, thr: m.thr })))); } catch (e) {}
+}
+
+function buildMicCards() {
+  MICS.forEach(m => {
+    if (m.thr == null) m.thr = CFG.mic_threshold_db;
+    const d = document.createElement('div');
+    d.className = 'mic';
+    d.innerHTML = `<div class="row" style="justify-content:space-between"><strong>Mikrofon ${m.i + 1}</strong><span class="glabel" data-k="state">aus</span></div>
+      <label class="field">Eingang <select data-k="dev"><option value="">– nicht verwendet –</option></select></label>
+      <canvas data-k="meter" aria-hidden="true"></canvas>
+      <label class="field">Schwelle <input type="range" min="-70" max="0" step="1" data-k="thr"> <span data-k="thrv"></span></label>
+      <div class="row"><button type="button" class="btn" data-k="test">Testsignal senden</button></div>`;
+    const q = k => d.querySelector(`[data-k="${k}"]`);
+    m.el = { card: d, state: q('state'), dev: q('dev'), meter: q('meter'), thr: q('thr'), thrv: q('thrv'), test: q('test') };
+    m.el.thr.value = m.thr; m.el.thrv.textContent = `${m.thr} dB`;
+    m.el.thr.addEventListener('input', () => { m.thr = +m.el.thr.value; m.el.thrv.textContent = `${m.thr} dB`; saveMicPrefs(); drawMeter(m); });
+    m.el.dev.addEventListener('change', () => { m.deviceId = m.el.dev.value; saveMicPrefs(); openMic(m); });
+    m.el.test.addEventListener('click', () => sendTestSignal(m));
+    els.micList.append(d);
+    drawMeter(m);
+  });
+}
+
+const devChannels = {};
+const AUDIO_RAW = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+
+async function probeChannels(id) {
+  if (devChannels[id]) return devChannels[id];
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ deviceId: { exact: id }, channelCount: { ideal: 8 } }, AUDIO_RAW) });
+    const t = st.getAudioTracks()[0];
+    devChannels[id] = (t && t.getSettings().channelCount) || 1;
+    st.getTracks().forEach(x => x.stop());
+  } catch (e) { devChannels[id] = 1; }
+  return devChannels[id];
+}
+
+function inputOptions(devs) {
+  const out = [];
+  devs.forEach((d, j) => {
+    const name = d.label || `Eingang ${j + 1}`, n = devChannels[d.deviceId] || 1;
+    if (n < 2) { out.push({ value: `${d.deviceId}|mix`, label: name, solo: true }); return; }
+    for (let c = 0; c < Math.min(n, 8); c++) out.push({ value: `${d.deviceId}|${c}`, label: `${name} · Kanal ${c + 1}${n === 2 ? (c ? ' (rechts)' : ' (links)') : ''}`, solo: true });
+    out.push({ value: `${d.deviceId}|mix`, label: `${name} · alle ${n} Kanäle gemischt`, solo: false });
+  });
+  return out;
+}
+
+async function refreshDevices(assign) {
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+  for (const d of devs) await probeChannels(d.deviceId);
+  const opts = inputOptions(devs), solo = opts.filter(o => o.solo);
+  MICS.forEach((m, k) => {
+    if (m.deviceId && !m.deviceId.includes('|')) m.deviceId += '|mix';
+    if (assign && m.deviceId == null && solo[k]) m.deviceId = solo[k].value;
+    const sel = m.el.dev;
+    sel.innerHTML = '';
+    sel.append(new Option('– nicht verwendet –', ''));
+    opts.forEach(o => sel.append(new Option(o.label, o.value)));
+    sel.value = opts.some(o => o.value === m.deviceId) ? m.deviceId : '';
+    if (!sel.value && m.deviceId) m.error = 'gewählter Eingang fehlt';
+  });
+  saveMicPrefs();
+}
+
+async function startMics() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showMsg('Kein Mikrofonzugriff: öffne http://localhost:8765/ in Chrome.'); return; }
+  try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); }
+  catch (e) { showMsg('Der Mikrofonzugriff wurde verweigert. Erlaube ihn in der Adresszeile und versuche es nochmals.'); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  mctx = new AC();
+  try { await mctx.resume(); } catch (e) {}
+  micsActive = true;
+  els.micsOn.textContent = 'Mikrofone ausschalten';
+  await refreshDevices(true);
+  for (const m of MICS) await openMic(m);
+  const ids = MICS.map(m => m.deviceId).filter(Boolean);
+  if (new Set(ids).size < ids.length) showMsg('Zwei Mikrofone verwenden denselben Eingang und Kanal.');
+  else {
+    const stereo = Object.entries(devChannels).filter(([, n]) => n > 1).length;
+    if (stereo) showMsg(`${stereo} Eingang mit mehreren Kanälen gefunden: wähle pro Mikrofon «Kanal 1 (links)» oder «Kanal 2 (rechts)».`);
+  }
+  micTimer = setInterval(micTick, 1000 / FPS);
+}
+
+function stopMics() {
+  clearInterval(micTimer);
+  MICS.forEach(closeMic);
+  liveMic = null;
+  if (!state.recording) els.lamp.hidden = true;
+  micsActive = false;
+  if (mctx) mctx.close().catch(() => {});
+  mctx = null;
+  els.micsOn.textContent = 'Mikrofone einschalten';
+  MICS.forEach(m => { setMicState(m); drawMeter(m); });
+}
+
+async function openMic(m) {
+  closeMic(m);
+  m.error = '';
+  if (!micsActive || !m.deviceId) { setMicState(m); drawMeter(m); return; }
+  setMicState(m);
+  const [devId, chS] = m.deviceId.split('|'), ch = chS == null || chS === 'mix' ? -1 : +chS;
+  try {
+    m.stream = await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ deviceId: { exact: devId }, channelCount: { ideal: Math.max(2, ch + 1) } }, AUDIO_RAW) });
+  } catch (e) { m.error = 'Eingang nicht verfügbar'; setMicState(m); return; }
+  const track = m.stream.getAudioTracks()[0], n = (track && track.getSettings().channelCount) || 1;
+  if (ch >= n) {
+    m.stream.getTracks().forEach(t => t.stop());
+    m.stream = null;
+    m.error = `Eingang liefert nur ${n} Kanal`;
+    setMicState(m);
+    return;
+  }
+  m.src = mctx.createMediaStreamSource(m.stream);
+  let node = m.src;
+  if (ch >= 0 && n > 1) {
+    m.split = mctx.createChannelSplitter(n);
+    m.pick = mctx.createGain();
+    m.src.connect(m.split);
+    m.split.connect(m.pick, ch);
+    node = m.pick;
+  }
+  m.an = mctx.createAnalyser();
+  m.an.fftSize = 2048; m.an.smoothingTimeConstant = 0; node.connect(m.an);
+  m.td = new Float32Array(m.an.fftSize); m.fd = new Float32Array(m.an.frequencyBinCount); m.mag = new Float32Array(m.an.frequencyBinCount);
+  m.noise = new Float32Array(m.an.frequencyBinCount); m.noiseReady = false;
+  m.clock = 0; m.ring = [];
+  m.proc = mctx.createScriptProcessor(2048, 1, 1);
+  m.proc.onaudioprocess = e => {
+    const d = new Float32Array(e.inputBuffer.getChannelData(0));
+    m.clock += d.length;
+    if (m.rec) { m.rec.chunks.push(d); return; }
+    m.ring.push(d);
+    let n = 0;
+    m.ring.forEach(c => { n += c.length; });
+    while (m.ring.length > 1 && n - m.ring[0].length > 0.4 * mctx.sampleRate) n -= m.ring.shift().length;
+  };
+  node.connect(m.proc); m.proc.connect(mctx.destination);
+  m.stream.getTracks().forEach(t => t.addEventListener('ended', () => { closeMic(m); m.error = 'Eingang getrennt'; setMicState(m); }));
+  setMicState(m);
+}
+
+function closeMic(m) {
+  releaseLive(m);
+  if (m.stream) m.stream.getTracks().forEach(t => t.stop());
+  if (m.src) { try { m.src.disconnect(); } catch (e) {} }
+  if (m.proc) { m.proc.onaudioprocess = null; try { m.proc.disconnect(); } catch (e) {} }
+  [m.split, m.pick].forEach(x => { if (x) { try { x.disconnect(); } catch (e) {} } });
+  m.stream = m.src = m.an = m.proc = m.split = m.pick = null;
+  m.rec = null;
+  m.level = -100;
+}
+
+function micTick() {
+  const hang = Math.round(CFG.gap_keep_s * FPS);
+  for (const m of MICS) {
+    if (m.an) {
+      m.an.getFloatTimeDomainData(m.td);
+      let s = 0;
+      for (let i = 0; i < m.td.length; i++) s += m.td[i] * m.td[i];
+      m.level = 10 * Math.log10(s / m.td.length + 1e-12);
+      const loud = m.level > m.thr;
+      m.an.getFloatFrequencyData(m.fd);
+      for (let k = 0; k < m.fd.length; k++) {
+        const raw = isFinite(m.fd[k]) ? Math.pow(10, m.fd[k] / 20) : 0;
+        if (!loud) m.noise[k] = m.noiseReady ? 0.97 * m.noise[k] + 0.03 * raw : raw;
+        m.mag[k] = Math.max(0, raw - CFG.noise_reduction * m.noise[k]);
+      }
+      if (!loud) m.noiseReady = true;
+      if (!m.rec && loud) {
+        let ringLen = 0;
+        m.ring.forEach(c => { ringLen += c.length; });
+        m.rec = { t0: mctx.currentTime, trigger: Date.now() / 1000, frames: [], n: 0, last: 0, loud: 0,
+          chunks: m.ring, base: m.clock - ringLen, keep: [] };
+        m.ring = [];
+        if (!liveMic) liveMic = m;
+      }
+      if (m.rec) {
+        const r = m.rec;
+        if (loud) { r.last = r.n; r.loud++; }
+        if (loud || r.n - r.last <= hang) {
+          r.frames.push(makeFrame(r.frames.length / FPS, m.td, m.mag, mctx.sampleRate, m.td.length));
+          r.keep.push(m.clock);
+          if (liveMic === m) showLive(m);
+        }
+        r.n++;
+        if (r.frames.length / FPS >= CFG.recording_s || mctx.currentTime - r.t0 >= CFG.recording_max_s) finishMic(m);
+      }
+    }
+    setMicState(m);
+    drawMeter(m);
+  }
+}
+
+function gateFrames(frames, thrDb) {
+  const hang = Math.round(CFG.gap_keep_s * FPS), out = [], idx = [];
+  let last = -1e9, loud = 0;
+  for (let k = 0; k < frames.length && out.length / FPS < CFG.recording_s; k++) {
+    const f = frames[k], isLoud = 20 * Math.log10(f.rms + 1e-9) > thrDb;
+    if (isLoud) { last = k; loud++; }
+    if (isLoud || k - last <= hang) { out.push(Object.assign({}, f, { t: out.length / FPS })); idx.push(k); }
+  }
+  return { frames: out, loud: loud / FPS, idx };
+}
+
+function finishMic(m) {
+  const r = m.rec;
+  m.rec = null;
+  releaseLive(m);
+  const audio = cutAudio(r.chunks, r.base, r.keep, mctx.sampleRate);
+  submitGated(m, r.frames, r.loud / FPS, r.trigger, `Mikrofon ${m.i + 1}`, audio);
+}
+
+function submitGated(m, frames, loudS, trigger, label, audio) {
+  const when = new Date(trigger * 1000).toLocaleTimeString('de-CH');
+  if (loudS < CFG.min_sound_s) {
+    showMsg(`${label}: Aufnahme von ${when} enthielt nur ${loudS.toFixed(1)} s Ton, verworfen.`);
+    if (!state.recording && !state.busy && state.sourceShort === `Mikrofon ${m.i + 1}`) { state.source = `${label}: Aufnahme von ${when} verworfen, zu wenig Ton`; renderPattern(); }
+    return;
+  }
+  submitRecording(m.i + 1, frames, Math.max(frames.length / FPS, 0.5), trigger, label, audio);
+}
+
+async function submitRecording(mic, frames, duration, trigger, label, audio) {
+  const mode = state.mode === 'test' ? 'walze' : state.mode;
+  const paths = generateFrom(frames, duration, mode);
+  const when = new Date(trigger * 1000).toLocaleTimeString('de-CH');
+  if (!state.recording && !state.busy) {
+    state.frames = frames; state.duration = duration; state.source = `${label}, Aufnahme von ${when}`; state.sourceShort = label;
+    setAudio(audio || null);
+    if (state.mode !== 'test') renderPattern();
+  }
+  if (!paths.length) { showMsg(`${label}: Aufnahme von ${when} ergibt keine Linien, nicht gesendet.`); return; }
+  if (!els.autoSend.checked) { showMsg(`${label}: Aufnahme von ${when} fertig, nicht gesendet (automatisches Senden ist aus).`); return; }
+  if (!robot.online) { showMsg(`${label}: Aufnahme von ${when} nicht gesendet, kein Server.`); return; }
+  try {
+    const r = await api('/api/jobs', { name: `${label} · ${MODES[mode].name}`, mode, mic, trigger, paths });
+    showMsg(`${label}: Aufnahme von ${when} ist Auftrag #${r.id} (${MODES[mode].name}, ${paths.length} Pfade).` + (r.dropped ? ` Auftrag #${r.dropped} wurde verworfen (Warteschlange voll).` : ''));
+  } catch (e) { showMsg(`${label}: Auftrag abgelehnt: ${e.message}`); }
+}
+
+async function sendTestSignal(m) {
+  if (!demoCache) demoCache = generateDemo();
+  const { samples, sr } = demoCache, len = Math.round(CFG.recording_max_s * sr);
+  const off = Math.floor(Math.random() * Math.max(1, samples.length - Math.round(CFG.recording_s * sr)));
+  const trigger = Date.now() / 1000;
+  const raw = await extractSamples(samples.subarray(off, Math.min(samples.length, off + len)), sr);
+  const g = gateFrames(raw, m.thr), hop = sr / FPS;
+  const audio = cutAudio([samples.subarray(off, Math.min(samples.length, off + len))], 0, g.idx.map(k => Math.round((k + 1) * hop)), sr);
+  submitGated(m, g.frames, g.loud, trigger, `Mikrofon ${m.i + 1} (Testsignal ab ${Math.round(off / sr)} s)`, audio);
+}
+
+function setMicState(m) {
+  if (!m.el.state) return;
+  let t;
+  if (m.rec) t = `nimmt auf · ${(m.rec.frames.length / FPS).toFixed(1)} von ${CFG.recording_s} s Ton · Schluss spätestens in ${Math.max(0, Math.ceil(CFG.recording_max_s - (mctx.currentTime - m.rec.t0)))} s`;
+  else if (m.an) t = 'wartet auf Ton';
+  else if (m.error) t = m.error;
+  else t = micsActive ? (m.deviceId ? 'öffnet …' : 'nicht verwendet') : 'aus';
+  m.el.state.textContent = t;
+  m.el.card.classList.toggle('rec', !!m.rec);
+}
+
+function drawMeter(m) {
+  const c = m.el.meter;
+  if (!c) return;
+  const w = c.clientWidth || 240, h = 18, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const g = c.getContext('2d'), x = db => clamp((db + 70) / 70, 0, 1) * w;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = cssVar('--surface-2'); g.fillRect(0, 0, w, h);
+  g.fillStyle = m.rec ? cssVar('--uv') : m.level > m.thr ? cssVar('--fg') : cssVar('--muted');
+  g.fillRect(0, 4, x(m.level), h - 8);
+  g.fillStyle = cssVar('--real'); g.fillRect(Math.round(x(m.thr)) - 1, 0, 2, h);
 }
 
 async function saveImage() {
-  const blob = await new Promise(r => els.cloth.toBlob(r, 'image/png'));
+  const blob = await new Promise(r => els.pattern.toBlob(r, 'image/png'));
   if (!blob) return;
   const name = `tonspur-tuch-${state.mode}.png`;
   if (downloads) {
@@ -819,10 +1671,13 @@ async function saveImage() {
 
 /* ---------- UI wiring ---------- */
 function updateModeText() {
-  const M = MODES[state.mode];
-  els.modeName.textContent = M.name; els.modeText.textContent = M.text;
+  const Md = MODES[state.mode];
+  els.modeName.textContent = Md.name; els.modeText.textContent = Md.text;
   els.legend.innerHTML = '';
-  M.legend.forEach(([k, v]) => {
+  const legend = state.mode === 'test'
+    ? [['Linien', CFG.test_speeds_mps.map(v => (v * 1000).toFixed(0)).join(' / ') + ' mm/s'], ['Punkte', CFG.test_dwells_s.join(' / ') + ' s'], ['Kreis', 'Ø 16 cm, muss rund sein'], ['Rahmen', 'Breite eines Auftrags']]
+    : Md.legend;
+  legend.forEach(([k, v]) => {
     const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd');
     dt.textContent = k; dd.textContent = v; d.append(dt, dd); els.legend.append(d);
   });
@@ -835,29 +1690,41 @@ function wireSeg(id, attr, apply) {
     apply(b.dataset[attr]);
   });
 }
-wireSeg('modeSeg', 'mode', v => { state.mode = v; updateModeText(); render(); });
-wireSeg('matSeg', 'mat', v => { state.material = v; render(); });
-wireSeg('fitSeg', 'fit', v => { state.fit = v === '1'; render(); });
-els.raster.addEventListener('change', () => { state.raster = els.raster.checked; render(); });
-els.umfang.addEventListener('change', () => { state.umfang = clamp(Math.round(+els.umfang.value || 530), 50, 2000); els.umfang.value = state.umfang; render(); });
-els.hoehe.addEventListener('change', () => { state.hoehe = clamp(Math.round(+els.hoehe.value || 100), 20, 300); els.hoehe.value = state.hoehe; render(); });
+wireSeg('modeSeg', 'mode', v => { state.mode = v; updateModeText(); renderPattern(); renderCloth(); });
+wireSeg('matSeg', 'mat', v => { state.material = v; renderPattern(); renderCloth(); });
+els.order.addEventListener('change', () => { state.showOrder = els.order.checked; renderPattern(); renderCloth(); });
 els.rec.addEventListener('click', () => { if (state.recording) stopRec(false); else if (!state.busy) startRec(); });
-els.demo.addEventListener('click', loadDemo);
+els.demo.addEventListener('click', () => loadDemo(true));
+els.play.addEventListener('click', togglePlay);
 els.file.addEventListener('change', () => loadFile(els.file.files && els.file.files[0]));
 els.save.addEventListener('click', saveImage);
+els.send.addEventListener('click', sendJob);
+els.lapTest.addEventListener('click', sendLapTest);
+els.clearQ.addEventListener('click', async () => { try { const r = await api('/api/queue/clear', {}); showMsg(`${r.cleared} Aufträge aus der Warteschlange gelöscht.`); } catch (e) { showMsg(e.message); } });
+els.estop.addEventListener('click', estop);
+els.clothReset.addEventListener('click', async () => {
+  if (!confirm('Neues Tuch: alle gezeichneten Aufträge aus der Ansicht entfernen und wieder bei Runde 1, 0° beginnen? Die Warteschlange bleibt.')) return;
+  try { const r = await api('/api/cloth/reset', {}); showMsg(r.msg + '.'); } catch (e) { showMsg(e.message); }
+});
+els.micsOn.addEventListener('click', () => { if (micsActive) stopMics(); else startMics(); });
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', () => { if (micsActive) refreshDevices(false).then(() => MICS.forEach(m => { if (m.deviceId && !m.an) openMic(m); })); });
+els.reset.addEventListener('click', async () => { try { await api('/api/reset', {}); showMsg('Zurückgesetzt: der Arm zieht die Lampe zurück und dreht sie nach unten.'); } catch (e) { showMsg(e.message); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && robot.online) estop(); });
 let rt = 0;
-window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 150); });
-try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => lastLayout && renderRuler(lastLayout)); } catch (e) {}
-new MutationObserver(() => lastLayout && renderRuler(lastLayout)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderPattern(); renderCloth(); }, 150); });
 
 if (inClaude) {
   els.micHint.hidden = false;
   els.save.hidden = true;
   window.claude.use('downloads').then(d => { downloads = d; els.save.hidden = !d; }).catch(() => {});
 }
+loadMicPrefs();
+buildMicCards();
 updateModeText();
-render();
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render());
+renderPattern();
+renderCloth();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderPattern(); renderCloth(); });
 loadDemo();
+poll();
 })();
 </script>
