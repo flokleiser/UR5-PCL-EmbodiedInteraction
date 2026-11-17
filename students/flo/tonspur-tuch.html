@@ -194,7 +194,14 @@ canvas.ruler{display:block;margin-top:8px}
   <section class="bolt" aria-label="Muster eines Auftrags">
     <div class="row" style="justify-content:space-between;margin-bottom:10px">
       <h2 class="sec" style="margin:0">Ein Auftrag</h2>
-      <button type="button" class="btn" id="play" disabled>▶ Anhören</button>
+      <div class="row">
+        <span class="field" id="playInfo"></span>
+        <div class="seg" role="group" aria-label="Was abgespielt wird" id="playSeg">
+          <button type="button" data-play="ton" aria-pressed="true">Originalton</button>
+          <button type="button" data-play="walze" aria-pressed="false">Musikwalze</button>
+        </div>
+        <button type="button" class="btn" id="play" disabled>▶ Anhören</button>
+      </div>
     </div>
     <div class="stage" id="stage">
       <canvas class="sheet" id="pattern" role="img" aria-label="Muster eines Auftrags, so wie es belichtet wird"></canvas>
@@ -247,7 +254,7 @@ const els = {
   pattern: $('pattern'), patRuler: $('patRuler'), stage: $('stage'), lamp: $('lamp'), patInfo: $('patInfo'), patTime: $('patTime'),
   cloth: $('cloth'), clothRuler: $('clothRuler'), clothStage: $('clothStage'), clothInfo: $('clothInfo'),
   rec: $('rec'), recLabel: $('recLabel'), dur: $('dur'), file: $('file'), demo: $('demo'), order: $('order'),
-  clothReset: $('clothReset'), lampLabel: $('lampLabel'), play: $('play'),
+  clothReset: $('clothReset'), lampLabel: $('lampLabel'), play: $('play'), playInfo: $('playInfo'),
   micsOn: $('micsOn'), autoSend: $('autoSend'), micList: $('micList'), recSecs: $('recSecs'),
   gapSecs: $('gapSecs'), maxSecs: $('maxSecs'), minSecs: $('minSecs'),
   send: $('send'), lapTest: $('lapTest'), clearQ: $('clearQ'), robotHint: $('robotHint'),
@@ -268,7 +275,7 @@ let CFG = {
 };
 
 const state = { mode: 'walze', material: 'washed', showOrder: true,
-  frames: [], duration: 40, source: '', sourceShort: '', recording: false, busy: false, paths: [], audio: null };
+  frames: [], duration: 40, source: '', sourceShort: '', recording: false, busy: false, paths: [], clip: null };
 const robot = { online: false, status: null, plan: null, planVersion: -1 };
 
 const MODES = {
@@ -1106,10 +1113,12 @@ function cutAudio(chunks, base, keep, sr) {
   return parts.length ? joinAudio(parts.map(([a, b]) => raw.subarray(a, b)), sr) : null;
 }
 
-let pctx = null, player = null;
+let pctx = null, player = null, playKind = 'ton';
 function updatePlay() {
-  els.play.disabled = !state.audio;
+  const c = state.clip, ok = !!c && (playKind === 'ton' ? !!c.audio : c.frames.length > 2);
+  els.play.disabled = !player && !ok;
   els.play.textContent = player ? '■ Stopp' : '▶ Anhören';
+  els.playInfo.textContent = c ? c.source : '';
 }
 function stopPlay() {
   if (player) {
@@ -1123,26 +1132,81 @@ function stopPlay() {
 }
 function setAudio(a) {
   stopPlay();
-  state.audio = a;
+  state.clip = a ? { audio: a, frames: state.frames, duration: state.duration, source: state.source, short: state.sourceShort, box: null } : null;
   updatePlay();
 }
+function setPlayKind(k) {
+  if (player) stopPlay();
+  playKind = k;
+  updatePlay();
+}
+
+function boxFreq(v) {
+  const rows = 24, row = clamp(Math.round((v - M) / (1 - 2 * M) * rows - 0.5), 0, rows - 1);
+  let f = 80 * Math.pow(2000 / 80, row / (rows - 1));
+  while (f < 330) f *= 2;
+  while (f > 2100) f /= 2;
+  return 440 * Math.pow(2, Math.round(12 * Math.log2(f / 440)) / 12);
+}
+async function musicBox(c) {
+  if (c.box) return c.box;
+  const pins = generateFrom(c.frames, c.duration, 'walze');
+  if (!pins.length) return null;
+  const sr = 44100, tail = 3, OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const off = new OAC(1, Math.ceil((c.duration + tail) * sr), sr);
+  const comp = off.createDynamicsCompressor(), master = off.createGain();
+  master.gain.value = 0.6; master.connect(comp); comp.connect(off.destination);
+  const tOf = u => clamp((u - UM) / (1 - 2 * UM), 0, 1) * c.duration;
+  for (const p of pins) {
+    const t0 = tOf(p.pts[0][0]), t1 = tOf(p.pts[p.pts.length - 1][0]), f = boxFreq(p.pts[0][1]);
+    const tau = 0.18 + 0.5 * Math.min(1.5, t1 - t0), end = t0 + Math.min(4, 5 * tau), peak = 0.12 + 0.3 * (p.dark || 0.5);
+    for (const [mul, amp, dec] of [[1, 1, 1], [2.76, 0.22, 0.35], [5.4, 0.08, 0.15]]) {
+      if (f * mul > sr / 2 - 1000) continue;
+      const o = off.createOscillator(), g = off.createGain();
+      o.frequency.value = f * mul;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(peak * amp, t0 + 0.003);
+      g.gain.setTargetAtTime(0, t0 + 0.003, tau * dec);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(end);
+    }
+  }
+  c.box = await off.startRendering();
+  return c.box;
+}
+
 async function togglePlay() {
   if (player) { stopPlay(); return; }
-  const a = state.audio;
-  if (!a) return;
+  const c = state.clip;
+  if (!c) return;
+  if (state.frames !== c.frames && !state.recording && !state.busy) {
+    state.frames = c.frames; state.duration = c.duration; state.source = c.source; state.sourceShort = c.short;
+    renderPattern();
+  }
   if (!pctx) pctx = new (window.AudioContext || window.webkitAudioContext)();
   try { await pctx.resume(); } catch (e) {}
-  const buf = pctx.createBuffer(1, a.samples.length, a.sr);
-  buf.copyToChannel(a.samples, 0);
+  let buf, len;
+  if (playKind === 'ton') {
+    if (!c.audio) return;
+    buf = pctx.createBuffer(1, c.audio.samples.length, c.audio.sr);
+    buf.copyToChannel(c.audio.samples, 0);
+    len = c.audio.samples.length / c.audio.sr;
+  } else {
+    els.play.disabled = true; els.play.textContent = 'Spieldose wird gestimmt …';
+    try { buf = await musicBox(c); } catch (e) { buf = null; }
+    if (!buf) { showMsg('Diese Aufnahme ergibt keine Stifte für die Musikwalze.'); updatePlay(); return; }
+    if (player || state.clip !== c) { updatePlay(); return; }
+    len = c.duration;
+  }
   const src = pctx.createBufferSource();
   src.buffer = buf; src.connect(pctx.destination);
-  const t0 = pctx.currentTime, len = a.samples.length / a.sr;
+  const t0 = pctx.currentTime;
   player = { src, raf: 0 };
   src.onended = () => { if (player && player.src === src) stopPlay(); };
   src.start();
   const step = () => {
     if (!player || player.src !== src) return;
-    if (!state.recording && !liveMic) moveLamp((pctx.currentTime - t0) / len * state.duration, 'Wiedergabe');
+    if (!state.recording && !liveMic) moveLamp((pctx.currentTime - t0) / len * state.duration, playKind === 'ton' ? 'Wiedergabe' : 'Spieldose');
     player.raf = requestAnimationFrame(step);
   };
   step();
@@ -1354,9 +1418,8 @@ const MICS = [0, 1, 2].map(i => ({ i, deviceId: null, thr: null, stream: null, s
 let mctx = null, micTimer = 0, micsActive = false, demoCache = null, liveMic = null;
 
 function showLive(m) {
-  if (state.recording || state.busy) return;
+  if (state.recording || state.busy || player) return;
   const r = m.rec;
-  if (state.audio) setAudio(null);
   state.frames = r.frames; state.duration = CFG.recording_s;
   state.source = `Mikrofon ${m.i + 1} nimmt auf: ${(r.frames.length / FPS).toFixed(1)} von ${CFG.recording_s} s Ton`;
   state.sourceShort = `Mikrofon ${m.i + 1}`;
@@ -1544,11 +1607,11 @@ function micTick() {
       m.an.getFloatFrequencyData(m.fd);
       for (let k = 0; k < m.fd.length; k++) {
         const raw = isFinite(m.fd[k]) ? Math.pow(10, m.fd[k] / 20) : 0;
-        if (!loud) m.noise[k] = m.noiseReady ? 0.97 * m.noise[k] + 0.03 * raw : raw;
+        if (!loud && !player) m.noise[k] = m.noiseReady ? 0.97 * m.noise[k] + 0.03 * raw : raw;
         m.mag[k] = Math.max(0, raw - CFG.noise_reduction * m.noise[k]);
       }
-      if (!loud) m.noiseReady = true;
-      if (!m.rec && loud) {
+      if (!loud && !player) m.noiseReady = true;
+      if (!m.rec && loud && !player) {
         let ringLen = 0;
         m.ring.forEach(c => { ringLen += c.length; });
         m.rec = { t0: mctx.currentTime, trigger: Date.now() / 1000, frames: [], n: 0, last: 0, loud: 0,
@@ -1606,7 +1669,7 @@ async function submitRecording(mic, frames, duration, trigger, label, audio) {
   const mode = state.mode === 'test' ? 'walze' : state.mode;
   const paths = generateFrom(frames, duration, mode);
   const when = new Date(trigger * 1000).toLocaleTimeString('de-CH');
-  if (!state.recording && !state.busy) {
+  if (!state.recording && !state.busy && !player) {
     state.frames = frames; state.duration = duration; state.source = `${label}, Aufnahme von ${when}`; state.sourceShort = label;
     setAudio(audio || null);
     if (state.mode !== 'test') renderPattern();
@@ -1696,6 +1759,7 @@ els.order.addEventListener('change', () => { state.showOrder = els.order.checked
 els.rec.addEventListener('click', () => { if (state.recording) stopRec(false); else if (!state.busy) startRec(); });
 els.demo.addEventListener('click', () => loadDemo(true));
 els.play.addEventListener('click', togglePlay);
+wireSeg('playSeg', 'play', setPlayKind);
 els.file.addEventListener('change', () => loadFile(els.file.files && els.file.files[0]));
 els.save.addEventListener('click', saveImage);
 els.send.addEventListener('click', sendJob);

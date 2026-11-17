@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")"
+export VIEWER_SCENE="${VIEWER_SCENE:-flo-tuch}"
+docker compose up -d ursim viewer
+echo "Pendant: http://localhost:6080/vnc.html   Viewer: http://localhost:7001   Seite: http://localhost:8765"
+docker compose run --rm -p 8765:8765 dev bash -c 'python3 students/flo/tonspur/server.py "$@"; exec bash' bash "$@"
