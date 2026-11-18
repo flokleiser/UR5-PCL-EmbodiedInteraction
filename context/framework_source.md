@@ -1,6 +1,6 @@
 # ur5e framework — source snapshot
 
-Generated 2026-11-04T10:32Z from git a495018
+Generated 2026-11-18T10:00Z from git c232700
 by context/make_source_snapshot.sh. The files below are the student-facing
 framework (src/ur5e/, without the viewer) and the function templates, verbatim.
 When this snapshot and the repo disagree, the repo is right — regenerate.
