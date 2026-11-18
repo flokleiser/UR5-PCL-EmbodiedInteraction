@@ -15,7 +15,7 @@ it will work with the same API, units and rules you have.
 | `INSTRUCTIONS.md` | **always** — the rules: how to help, what not to do (system prompt / custom instructions) | 8 KB |
 | `KNOWLEDGE.md` | **always** — the facts: environment, the `ur5e` API with signatures, workspace, safety profiles, lab robot, typical errors | 16 KB |
 | `CART_360.md` | **always, once you work on the real arm or around the cart** — the lab safety setup `cart_360`: what is checked, how to route moves around the cart, what each rejection means | 8 KB |
-| `framework_source.md` | the AI needs to see the actual implementation (it is `src/ur5e/*.py` + the templates concatenated; regenerate with `./context/make_source_snapshot.sh` after a `git pull`) | ~65 KB |
+| `framework_source.md` | the AI needs to see the actual implementation (it is `src/ur5e/*.py` + the templates concatenated; regenerate with `./context/make_source_snapshot.sh` after a `git pull`) | ~110 KB |
 | `ur_rtde/api_reference.txt` | you go below the framework (`robot.conn.control…`) and need exact `ur_rtde` call signatures | 95 KB |
 | `ur_rtde/guides.txt`, `examples.txt`, `faq.txt`, `rtde_protocol_guide.txt`, `installation.txt`, `introduction.txt` | background on RTDE, realtime loops, servo/speed commands, the record/replay example | 150 KB total |
 | `manual/UR5e_User_Manual_en_Global.txt` | pendant menus, I/O wiring and voltages, tool flange connector, safety settings, freedrive, installation variables — the official UR5e user manual (PolyScope 5.x) as searchable text | 720 KB |
