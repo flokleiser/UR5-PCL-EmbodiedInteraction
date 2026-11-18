@@ -241,7 +241,7 @@ def best_branch(cyl, roll, hs=None):
 
 def _key(cyl, roll):
     keys = ("cloth_radius_m", "lamp_distance_m", "lamp_tcp", "height_min_m", "height_max_m", "lift_radius_m",
-            "retract_radius_m", "travel_height_max_m", "tilt_down_on_travel")
+            "retract_radius_m", "travel_height_max_m", "tilt_down_on_travel", "lamp_control")
     blob = json.dumps([roll, ELBOW_MIN_DEG, WRIST_MIN_DEG, MAX_STEP_JUMP] + [cyl.cfg.get(k) for k in keys])
     return hashlib.sha1(blob.encode()).hexdigest()
 

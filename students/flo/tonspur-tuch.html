@@ -62,6 +62,9 @@ select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);
 .field{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 .check{display:inline-flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
 .check input{accent-color:var(--uv);width:16px;height:16px}
+.field input[type="text"],.field input[type="number"]{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
+.field input[type="text"]{width:15ch}
+.field input[type="number"]{width:8ch}
 .hint{font-size:13px;color:var(--muted);margin:0}
 :focus-visible{outline:2px solid var(--uv);outline-offset:2px}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -107,6 +110,7 @@ canvas.ruler{display:block;margin-top:8px}
 <div class="topbar">
   <span class="badge" id="badge" data-target="off">Offline · nur Vorschau</span>
   <div class="right">
+    <button type="button" class="btn" id="park" hidden>Arm in Fahrstellung</button>
     <button type="button" class="btn" id="reset" hidden>Zurücksetzen und Lampe wegdrehen</button>
     <button type="button" class="estop" id="estop" title="Taste Esc">NOT-AUS</button>
   </div>
@@ -170,7 +174,43 @@ canvas.ruler{display:block;margin-top:8px}
         <button type="button" class="btn" id="lapTest" disabled>Rundentest</button>
         <button type="button" class="btn" id="clearQ" disabled>Warteschlange leeren</button>
       </div>
+      <p class="msg err" id="sendHint" hidden></p>
       <p class="hint" id="robotHint">Kein Server: Die Seite zeigt nur die Vorschau. Starte <code>python students/flo/tonspur/server.py</code> und öffne http://localhost:8765/.</p>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Verbindung</span>
+      <div class="seg" role="group" aria-label="Ziel" id="connSeg">
+        <button type="button" data-tgt="sim" aria-pressed="true">Simulator</button>
+        <button type="button" data-tgt="real" aria-pressed="false">Echter Roboter</button>
+      </div>
+      <div class="row">
+        <label class="field" for="connHost">IP <input type="text" id="connHost" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="192.168.1.11"></label>
+        <label class="field" for="connPayload" id="connPayloadBox" hidden>Lampe kg <input type="number" id="connPayload" min="0" max="5" step="0.05" placeholder="1.2"></label>
+      </div>
+      <div class="row">
+        <button type="button" class="btn primary" id="connGo" disabled>Verbinden</button>
+      </div>
+      <p class="hint" id="connHint"></p>
+      <p class="msg" id="connMsg" role="status" hidden></p>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Lampe · DMX</span>
+      <div class="row">
+        <label class="field" for="dmxDriver">Interface
+          <select id="dmxDriver">
+            <option value="pro">Enttec DMX USB Pro und kompatible</option>
+            <option value="open">Open DMX / FTDI-Kabel</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" class="btn primary" id="dmxConnect">DMX verbinden</button>
+        <button type="button" class="btn" id="dmxTest" disabled>1 s testen</button>
+      </div>
+      <p class="hint" id="dmxState">nicht verbunden</p>
+      <label class="field" for="dryRun" id="dryBox" hidden><input type="checkbox" id="dryRun"> Trockenlauf: nur Bewegung, Lampe bleibt aus (Aufträge laufen ohne DMX)</label>
     </div>
   </section>
 
@@ -254,11 +294,14 @@ const els = {
   pattern: $('pattern'), patRuler: $('patRuler'), stage: $('stage'), lamp: $('lamp'), patInfo: $('patInfo'), patTime: $('patTime'),
   cloth: $('cloth'), clothRuler: $('clothRuler'), clothStage: $('clothStage'), clothInfo: $('clothInfo'),
   rec: $('rec'), recLabel: $('recLabel'), dur: $('dur'), file: $('file'), demo: $('demo'), order: $('order'),
-  clothReset: $('clothReset'), lampLabel: $('lampLabel'), play: $('play'), playInfo: $('playInfo'),
+  clothReset: $('clothReset'), lampLabel: $('lampLabel'), dmxDriver: $('dmxDriver'), dmxConnect: $('dmxConnect'),
+  dmxTest: $('dmxTest'), dmxState: $('dmxState'), clothLegend: $('clothLegend'),
+  connSeg: $('connSeg'), connHost: $('connHost'), connPayload: $('connPayload'), connPayloadBox: $('connPayloadBox'),
+  connGo: $('connGo'), connHint: $('connHint'), connMsg: $('connMsg'), dryRun: $('dryRun'), dryBox: $('dryBox'), play: $('play'), playInfo: $('playInfo'),
   micsOn: $('micsOn'), autoSend: $('autoSend'), micList: $('micList'), recSecs: $('recSecs'),
   gapSecs: $('gapSecs'), maxSecs: $('maxSecs'), minSecs: $('minSecs'),
-  send: $('send'), lapTest: $('lapTest'), clearQ: $('clearQ'), robotHint: $('robotHint'),
-  badge: $('badge'), estop: $('estop'), reset: $('reset'), save: $('save'),
+  send: $('send'), lapTest: $('lapTest'), clearQ: $('clearQ'), robotHint: $('robotHint'), sendHint: $('sendHint'),
+  badge: $('badge'), estop: $('estop'), reset: $('reset'), park: $('park'), save: $('save'),
   source: $('source'), meta: $('meta'), msg: $('msg'), micHint: $('micHint'),
   modeName: $('modeName'), modeText: $('modeText'), legend: $('legend'),
   rTarget: $('rTarget'), rConn: $('rConn'), rLap: $('rLap'), rAngle: $('rAngle'), rHeight: $('rHeight'), rLamp: $('rLamp'),
@@ -271,7 +314,8 @@ let CFG = {
   max_step_deg: 5, draw_speed_dark_mps: 0.05, draw_speed_light_mps: 0.15, point_dwell_s: 0.05, dot_dwell_max_s: 0.6,
   test_speeds_mps: [0.02, 0.04, 0.07, 0.1, 0.15], test_dwells_s: [0.25, 0.5, 1, 2, 4], vmax: 0.25, target: null, host: null,
   recording_s: 10, recording_max_s: 30, min_sound_s: 1.0, gap_keep_s: 0.3, noise_reduction: 1.5,
-  mic_threshold_db: -35, est_path_overhead_s: 6.6
+  mic_threshold_db: -35, est_path_overhead_s: 2.5,
+  lamp_control: 'dmx', dmx_channel: 1, dmx_on_value: 255, dmx_off_value: 0
 };
 
 const state = { mode: 'walze', material: 'washed', showOrder: true,
@@ -971,10 +1015,11 @@ function renderCloth() {
     const x = X(clamp(live.a, 0, 360)), y = Y(live.h);
     g.strokeStyle = uv; g.lineWidth = 0.6; g.setLineDash([1.5, 1]);
     g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); g.setLineDash([]);
-    g.fillStyle = uv; g.globalAlpha = live.facing === 'tuch' ? 0.9 : 0.35;
-    g.beginPath(); g.arc(x, y, live.facing === 'tuch' ? 2.2 : 1.6, 0, TAU); g.fill();
+    const ls = robot.status.lamp || {}, lit = ls.control === 'dmx' ? ls.on : live.facing === 'tuch';
+    g.fillStyle = uv; g.globalAlpha = lit ? 0.9 : 0.35;
+    g.beginPath(); g.arc(x, y, lit ? 2.2 : 1.6, 0, TAU); g.fill();
     g.globalAlpha = 1; g.fillStyle = uv; g.font = '5px "IBM Plex Mono", monospace';
-    const label = `Arm ${live.a.toFixed(1)}° · Lampe ${lampText(live.facing)}`;
+    const label = ls.control === 'dmx' ? `Arm ${live.a.toFixed(1)}° · Lampe ${ls.on ? 'AN' : 'aus'}` : `Arm ${live.a.toFixed(1)}° · Lampe ${lampText(live.facing)}`;
     g.fillText(label, x + 3 > W - 60 ? x - 62 : x + 3, 7);
   }
   g.restore();
@@ -1014,11 +1059,221 @@ async function api(path, body) {
 function updateButtons() {
   const s = robot.status, ok = robot.online && s && !s.estop;
   els.send.disabled = !ok || !state.paths.length || state.recording || state.busy;
+  // say why sending is blocked instead of only greying the buttons out
+  let why = '';
+  if (robot.online && s && s.estop) why = 'NOT-AUS aktiv: oben rechts «Zurücksetzen» drücken, dann verbindet der Server wieder und Aufträge sind möglich.';
+  else if (robot.online && s && !s.connected) why = `Roboter nicht verbunden (${s.step || '…'})` + (s.error ? `: ${s.error}` : '');
+  els.sendHint.textContent = why; els.sendHint.hidden = !why;
   els.lapTest.disabled = !ok;
   els.clearQ.disabled = !robot.online;
   els.clothReset.disabled = !robot.online;
   els.estop.disabled = !robot.online;
   els.reset.hidden = !(robot.online && s && s.estop);
+  els.park.hidden = !(robot.online && s && s.connected && !s.estop);
+  els.park.disabled = !!(s && s.current);
+  renderDmx();
+  renderConn();
+}
+
+const CONN = { target: 'sim', dirty: false, key: '', armed: 0, hosts: { sim: '', real: '' } };
+function connMsg(t, bad) {
+  els.connMsg.textContent = t || ''; els.connMsg.hidden = !t;
+  els.connMsg.classList.toggle('err', !!bad);
+}
+try { Object.assign(CONN.hosts, JSON.parse(localStorage.getItem('tonspur-hosts') || '{}')); } catch (e) {}
+function setConnTarget(t) {
+  if (CONN.target !== t) CONN.hosts[CONN.target] = els.connHost.value.trim();
+  CONN.target = t;
+  CONN.armed = 0;
+  els.connSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tgt === t)));
+  const s = robot.status;
+  els.connHost.value = CONN.hosts[t] || (t === 'sim' && s ? s.sim_host : '');
+  els.connHost.placeholder = t === 'sim' ? (s ? s.sim_host : 'ursim') : '192.168.1.11';
+  els.connPayloadBox.hidden = t !== 'real';
+  renderConn();
+}
+function renderConn() {
+  const s = robot.status;
+  // follow the server whenever its target/host changes (also after a restart with ./start --real)
+  const key = s ? `${s.target}|${s.host}|${!!s.idle}` : '';
+  if (s && CONN.key !== key) {
+    CONN.key = key;
+    CONN.hosts[s.target] = s.host;
+    if (s.target === 'real' && s.payload) els.connPayload.value = s.payload;
+    setConnTarget(s.target);
+    return;
+  }
+  const realBtn = els.connSeg.querySelector('[data-tgt="real"]');
+  realBtn.disabled = !(s && s.allow_real);
+  const busy = !!(s && s.current);
+  els.connGo.disabled = !robot.online || !s || busy || (CONN.target === 'real' && !(s && s.allow_real));
+  if (CONN.armed && Date.now() - CONN.armed > 10000) { CONN.armed = 0; connMsg(''); }
+  els.connGo.textContent = CONN.target !== 'real' ? 'Verbinden'
+    : CONN.armed ? 'Ja, ECHTEN Roboter jetzt verbinden' : 'Mit echtem Roboter verbinden';
+  let t;
+  if (!robot.online || !s) t = 'Kein Server: erst server.py starten.';
+  else if (busy) t = 'Ein Auftrag läuft: Wechsel erst danach oder nach NOT-AUS.';
+  else {
+    t = `Jetzt: ${s.target === 'sim' ? 'Simulator' : 'ECHTER ROBOTER'} ${s.host} · ${s.connected ? 'verbunden' : 'nicht verbunden'}.`;
+    if (!s.allow_real) t += ' Echter Roboter gesperrt: Server mit ./start --real (ohne Simulator) oder ./start --allow-real starten.';
+    else if (s.idle) t += ' Noch nicht verbunden: Masse der Lampe eingeben und «Mit echtem Roboter verbinden» drücken.';
+    else if (CONN.target === 'real') t += ' Masse der Lampe mit Halterung angeben. Wartende Aufträge werden beim Wechsel gelöscht.';
+  }
+  els.connHint.textContent = t;
+}
+async function connectRobot() {
+  const host = els.connHost.value.trim() || (CONN.target === 'sim' && robot.status ? robot.status.sim_host : '');
+  const payload = parseFloat(els.connPayload.value);
+  if (!host) { connMsg('Bitte die IP-Adresse des Roboters eingeben.', true); return; }
+  if (CONN.target === 'real') {
+    if (!(payload > 0)) { connMsg('Bitte zuerst die gemessene Masse der Lampe in kg eingeben (Feld «Lampe kg»).', true); els.connPayload.focus(); return; }
+    // two clicks on the page instead of confirm(): confirm() can be silently suppressed by the browser
+    if (!CONN.armed) {
+      CONN.armed = Date.now();
+      connMsg(`ECHTER Roboter ${host}, Lampe ${payload} kg: Roboter in Remote Control? Not-Halt in Reichweite? Niemand im Arbeitsbereich? Dann innert 10 s nochmals drücken. Die Warteschlange wird geleert.`, true);
+      renderConn();
+      return;
+    }
+    CONN.armed = 0;
+  }
+  CONN.hosts[CONN.target] = host;
+  try { localStorage.setItem('tonspur-hosts', JSON.stringify(CONN.hosts)); } catch (e) {}
+  try {
+    connMsg('sende …');
+    const r = await api('/api/connect', { target: CONN.target, host, payload: CONN.target === 'real' ? payload : 0 });
+    connMsg('Server ' + r.msg + (r.cleared ? `; ${r.cleared} wartende Aufträge gelöscht` : '') + '. Status siehe oben.');
+  } catch (e) { connMsg('Verbindung abgelehnt: ' + e.message, true); }
+  renderConn();
+}
+
+function applyLampMode() {
+  const dmx = CFG.lamp_control === 'dmx';
+  els.reset.textContent = dmx ? 'Zurücksetzen' : 'Zurücksetzen und Lampe wegdrehen';
+  els.clothLegend.textContent = dmx ? 'dunkel: belichtet · violett: wartet · gepunktet: Leerfahrt mit Lampe aus' : 'dunkel: belichtet · violett: wartet · gepunktet: Leerfahrt mit Lampe nach unten';
+}
+
+const DMX = { port: null, writer: null, driver: 'pro', on: false, test: false, seq: -1, lastOk: 0, chain: Promise.resolve(), timer: 0, pending: false, polling: false, error: '' };
+const DMX_NAMES = { pro: 'Enttec Pro', open: 'Open DMX' };
+function dmxName() { return DMX_NAMES[DMX.driver] || 'DMX'; }
+function dmxFrame(lit) {
+  const d = new Uint8Array(513), ch = clamp(Math.round(CFG.dmx_channel || 1), 1, 512);
+  d[ch] = clamp(Math.round(lit ? CFG.dmx_on_value : CFG.dmx_off_value), 0, 255);
+  return d;
+}
+async function dmxWrite() {
+  if (!DMX.writer) return;
+  const d = dmxFrame(DMX.on || DMX.test);
+  if (DMX.driver === 'pro') {
+    const n = d.length, pkt = new Uint8Array(n + 5);
+    pkt[0] = 0x7E; pkt[1] = 6; pkt[2] = n & 255; pkt[3] = n >> 8; pkt.set(d, 4); pkt[n + 4] = 0xE7;
+    await DMX.writer.write(pkt);
+  } else {
+    await DMX.port.setSignals({ break: true });
+    await sleep(1);
+    await DMX.port.setSignals({ break: false });
+    await DMX.writer.write(d);
+  }
+}
+function dmxSend() {
+  const p = DMX.chain.then(dmxWrite).catch(e => dmxLost('DMX-Fehler: ' + e.message));
+  DMX.chain = p;
+  return p;
+}
+function dmxSet(on) {
+  DMX.on = on;
+  renderDmx();
+  return dmxSend();
+}
+function renderDmx() {
+  els.dmxConnect.textContent = DMX.writer ? 'DMX trennen' : 'DMX verbinden';
+  els.dmxDriver.disabled = !!DMX.writer;
+  const s = robot.status, drawing = !!(s && s.current);
+  els.dmxTest.disabled = !DMX.writer || DMX.on || DMX.test || drawing;
+  const lit = DMX.on || DMX.test;
+  let t;
+  if (!DMX.writer) t = (DMX.error ? DMX.error + ' · ' : '') + `nicht verbunden · Kanal ${CFG.dmx_channel}`;
+  else t = `${dmxName()} verbunden · Kanal ${CFG.dmx_channel} = ${lit ? CFG.dmx_on_value : CFG.dmx_off_value} · Lampe ${lit ? 'AN' : 'aus'}` + (DMX.test ? ' (Test)' : '') +
+    (robot.online && Date.now() - DMX.lastOk < 2500 ? ' · der Server schaltet' : ' · kein Server, bleibt aus');
+  els.dmxState.textContent = t;
+  const ls = (s && s.lamp) || {};
+  els.dryBox.hidden = !(robot.online && ls.control === 'dmx');
+  els.dryRun.checked = !!ls.dry;
+  els.dryRun.disabled = drawing;
+}
+async function dmxConnect() {
+  if (!('serial' in navigator)) { showMsg('Web Serial fehlt: öffne http://localhost:8765/ in Chrome oder Edge.'); return; }
+  let port;
+  try { port = await navigator.serial.requestPort(); } catch (e) { return; }
+  DMX.driver = els.dmxDriver.value;
+  const opts = DMX.driver === 'pro' ? { baudRate: 57600 } : { baudRate: 250000, dataBits: 8, stopBits: 2, parity: 'none' };
+  try { await port.open(opts); } catch (e) { showMsg('Das DMX-Interface lässt sich nicht öffnen: ' + e.message + '. Ist es in einem anderen Programm oder Tab offen?'); return; }
+  DMX.port = port; DMX.writer = port.writable.getWriter(); DMX.on = false; DMX.test = false; DMX.seq = -1; DMX.error = ''; DMX.chain = Promise.resolve();
+  await dmxSend();
+  DMX.timer = setInterval(() => {
+    if (DMX.on && Date.now() - DMX.lastOk > 2500) dmxSet(false);
+    if (!DMX.writer || DMX.pending) return;
+    DMX.pending = true;
+    dmxSend().finally(() => { DMX.pending = false; });
+  }, DMX.driver === 'pro' ? 500 : 30);
+  showMsg(`DMX verbunden (${dmxName()}). Die Lampe ist aus; der Server schaltet sie nur beim Zeichnen ein.`);
+  renderDmx();
+  dmxLoop();
+}
+async function dmxLoop() {
+  if (DMX.polling) return;
+  DMX.polling = true;
+  while (DMX.writer) {
+    if (!robot.online || CFG.lamp_control !== 'dmx') {
+      if (DMX.on) await dmxSet(false);
+      await sleep(500);
+      continue;
+    }
+    try {
+      const r = await api('/api/lamp/poll', { since: DMX.seq, device: dmxName() });
+      if (!DMX.writer) break;
+      DMX.lastOk = Date.now();
+      await dmxSet(!!r.on);
+      await DMX.chain;
+      if (!DMX.writer) break;
+      DMX.seq = r.seq;
+      await api('/api/lamp/ack', { seq: r.seq, device: dmxName() });
+    } catch (e) {
+      if (DMX.on) await dmxSet(false);
+      await sleep(500);
+    }
+  }
+  DMX.polling = false;
+}
+async function dmxClose(reason) {
+  if (!DMX.writer) return;
+  clearInterval(DMX.timer);
+  DMX.on = false; DMX.test = false;
+  try { await dmxSend(); await DMX.chain; } catch (e) {}
+  const w = DMX.writer, port = DMX.port;
+  DMX.writer = null; DMX.port = null;
+  try { w.releaseLock(); } catch (e) {}
+  try { await port.close(); } catch (e) {}
+  if (robot.online) api('/api/lamp/release', {}).catch(() => {});
+  DMX.error = reason || '';
+  renderDmx();
+}
+function dmxLost(reason) {
+  if (!DMX.writer) return;
+  clearInterval(DMX.timer);
+  const port = DMX.port;
+  try { DMX.writer.releaseLock(); } catch (e) {}
+  DMX.writer = null; DMX.port = null; DMX.on = false; DMX.test = false;
+  try { port.close(); } catch (e) {}
+  if (robot.online) api('/api/lamp/release', {}).catch(() => {});
+  DMX.error = reason;
+  showMsg(reason + '. Die Lampe ist möglicherweise noch an: Netzteil prüfen!');
+  renderDmx();
+}
+async function dmxTest() {
+  if (!DMX.writer || DMX.on || DMX.test) return;
+  DMX.test = true; await dmxSend(); renderDmx();
+  await sleep(1000);
+  DMX.test = false; await dmxSend(); renderDmx();
 }
 
 function renderStatus() {
@@ -1040,7 +1295,11 @@ function renderStatus() {
   const lv = s.live || {};
   els.rAngle.textContent = lv.a != null ? `${lv.a.toFixed(1)}° (Basisgelenk ${lv.base_deg}°)` : '–';
   els.rHeight.textContent = lv.h != null ? `${lv.h.toFixed(3)} m über der Basis` : '–';
-  els.rLamp.textContent = lv.facing ? `immer an · zeigt ${lampText(lv.facing)}` + (lv.gap != null ? ` · ${(lv.gap * 100).toFixed(1)} cm vom Tuch` : ` · ${(lv.r * 100).toFixed(0)} cm von der Achse`) : 'immer an · Richtung unbekannt';
+  const ls = s.lamp || {};
+  if (ls.control === 'dmx') {
+    const via = ls.dry ? 'TROCKENLAUF: Lampe bleibt aus' : ls.dmx ? `über DMX (${ls.device})` : ls.required ? 'DMX NICHT VERBUNDEN' : 'nur simuliert, kein DMX verbunden';
+    els.rLamp.textContent = `${ls.on ? 'AN' : 'aus'} · ${via}` + (lv.gap != null ? ` · ${(lv.gap * 100).toFixed(1)} cm vom Tuch` : '');
+  } else els.rLamp.textContent = lv.facing ? `immer an · zeigt ${lampText(lv.facing)}` + (lv.gap != null ? ` · ${(lv.gap * 100).toFixed(1)} cm vom Tuch` : ` · ${(lv.r * 100).toFixed(0)} cm von der Achse`) : 'immer an · Richtung unbekannt';
   els.rStep.textContent = (s.rewinding ? 'Rücklauf · ' : '') + (s.step || '–');
   els.rJob.textContent = s.current ? `#${s.current.id} ${s.current.name} · Runde ${s.current.lap}, ${s.current.a0.toFixed(0)}°–${s.current.a1.toFixed(0)}° · Pfad ${Math.min((s.current.progress || 0) + 1, s.current.npaths)}/${s.current.npaths}` : 'nichts';
   els.rQueue.innerHTML = '';
@@ -1066,7 +1325,7 @@ async function poll() {
     const s = await api('/api/status');
     if (!robot.online) {
       try { CFG = Object.assign({}, CFG, await api('/api/config')); } catch (e) {}
-      robot.online = true; updateModeText(); renderPattern();
+      robot.online = true; updateModeText(); renderPattern(); applyLampMode();
       els.recSecs.textContent = CFG.recording_s; els.gapSecs.textContent = CFG.gap_keep_s;
       els.maxSecs.textContent = CFG.recording_max_s; els.minSecs.textContent = CFG.min_sound_s;
     }
@@ -1237,7 +1496,11 @@ async function sendLapTest() {
   } catch (e) { showMsg('Rundentest abgelehnt: ' + e.message); }
 }
 async function estop() {
-  try { const r = await api('/api/estop', {}); showMsg('NOT-AUS: ' + r.msg + '. Die Lampe lässt sich nicht abschalten: decke sie ab oder drücke «Zurücksetzen und Lampe wegdrehen».'); }
+  if (DMX.writer) { DMX.test = false; dmxSet(false); }
+  const lampNote = CFG.lamp_control === 'dmx'
+    ? (DMX.writer ? ' Lampe über DMX ausgeschaltet.' : ' Kein DMX verbunden: Lampe am Netzteil prüfen!')
+    : ' Die Lampe lässt sich nicht abschalten: decke sie ab oder drücke «Zurücksetzen und Lampe wegdrehen».';
+  try { const r = await api('/api/estop', {}); showMsg('NOT-AUS: ' + r.msg + '.' + lampNote); }
   catch (e) { showMsg('NOT-AUS konnte den Server nicht erreichen: roten Knopf am Handbediengerät drücken!'); }
 }
 
@@ -1766,13 +2029,35 @@ els.send.addEventListener('click', sendJob);
 els.lapTest.addEventListener('click', sendLapTest);
 els.clearQ.addEventListener('click', async () => { try { const r = await api('/api/queue/clear', {}); showMsg(`${r.cleared} Aufträge aus der Warteschlange gelöscht.`); } catch (e) { showMsg(e.message); } });
 els.estop.addEventListener('click', estop);
+els.dmxConnect.addEventListener('click', () => { if (DMX.writer) dmxClose(); else dmxConnect(); });
+els.dmxTest.addEventListener('click', dmxTest);
+wireSeg('connSeg', 'tgt', setConnTarget);
+els.connGo.addEventListener('click', connectRobot);
+els.connHost.addEventListener('keydown', e => { if (e.key === 'Enter' && !els.connGo.disabled) connectRobot(); });
+try { const d = localStorage.getItem('tonspur-dmx'); if (d && DMX_NAMES[d]) els.dmxDriver.value = d; } catch (e) {}
+els.dmxDriver.addEventListener('change', () => { try { localStorage.setItem('tonspur-dmx', els.dmxDriver.value); } catch (e) {} });
+if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => { if (e.target === DMX.port) dmxLost('DMX-Interface wurde abgesteckt'); });
+window.addEventListener('pagehide', () => {
+  if (!DMX.writer) return;
+  DMX.on = false; DMX.test = false; dmxSend();
+  try { navigator.sendBeacon('/api/lamp/release', new Blob(['{}'], { type: 'application/json' })); } catch (e) {}
+});
 els.clothReset.addEventListener('click', async () => {
   if (!confirm('Neues Tuch: alle gezeichneten Aufträge aus der Ansicht entfernen und wieder bei Runde 1, 0° beginnen? Die Warteschlange bleibt.')) return;
   try { const r = await api('/api/cloth/reset', {}); showMsg(r.msg + '.'); } catch (e) { showMsg(e.message); }
 });
 els.micsOn.addEventListener('click', () => { if (micsActive) stopMics(); else startMics(); });
 if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', () => { if (micsActive) refreshDevices(false).then(() => MICS.forEach(m => { if (m.deviceId && !m.an) openMic(m); })); });
-els.reset.addEventListener('click', async () => { try { await api('/api/reset', {}); showMsg('Zurückgesetzt: der Arm zieht die Lampe zurück und dreht sie nach unten.'); } catch (e) { showMsg(e.message); } });
+els.dryRun.addEventListener('change', async () => {
+  const on = els.dryRun.checked;
+  try { await api('/api/lamp/dry', { on }); showMsg(on ? 'Trockenlauf an: Aufträge fahren ohne DMX, die Lampe wird nie eingeschaltet.' : 'Trockenlauf aus: auf dem echten Roboter warten Aufträge wieder auf DMX.'); }
+  catch (e) { els.dryRun.checked = !on; showMsg(e.message); }
+});
+els.park.addEventListener('click', async () => {
+  try { await api('/api/park', {}); showMsg('Arm fährt in die Fahrstellung: zurückziehen, aufrichten, dann zurück zum Tuchanfang (0°). Fortschritt und Fehler siehe Status.'); }
+  catch (e) { showMsg(e.message); }
+});
+els.reset.addEventListener('click', async () => { try { await api('/api/reset', {}); showMsg(CFG.lamp_control === 'dmx' ? 'Zurückgesetzt: Lampe aus, der Arm zieht sich zurück, richtet sich auf und dreht zurück zum Tuchanfang (0°).' : 'Zurückgesetzt: der Arm zieht die Lampe zurück und dreht sie nach unten.'); } catch (e) { showMsg(e.message); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && robot.online) estop(); });
 let rt = 0;
 window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderPattern(); renderCloth(); }, 150); });
@@ -1785,6 +2070,7 @@ if (inClaude) {
 loadMicPrefs();
 buildMicCards();
 updateModeText();
+applyLampMode();
 renderPattern();
 renderCloth();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderPattern(); renderCloth(); });

@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 from geometry import Cylinder
+from lamp import LampError
 from reach import ParkJoints
 
 TAU = 2 * math.pi
@@ -14,8 +15,9 @@ class Aborted(Exception):
 
 
 class Plotter:
-    def __init__(self, robot, cyl: Cylinder, cfg: dict, abort, report):
+    def __init__(self, robot, cyl: Cylinder, cfg: dict, abort, report, lamp=None):
         self.robot = robot
+        self.lamp = lamp if cyl.switched else None
         self.cyl = cyl
         self.cfg = cfg
         self.abort = abort
@@ -51,6 +53,31 @@ class Plotter:
         self._check()
         if ok is False:
             raise RuntimeError(f"Gelenkbewegung nicht ausgeführt: {what}")
+
+    def _lamp_on(self):
+        if self.lamp is None:
+            return
+        self._check()
+        self.lamp.set(True)
+        self._check()
+        self._wait(self.cfg["lamp_settle_s"])
+
+    def _lamp_off(self):
+        if self.lamp is not None:
+            self.lamp.set(False)
+
+    def _lamp_off_quiet(self):
+        try:
+            self._lamp_off()
+        except LampError:
+            pass
+
+    def wait_lamp(self):
+        if self.lamp is None or not self.lamp.required:
+            return
+        while not self.lamp.connected():
+            self.report(step="wartet auf DMX: auf der Seite «DMX verbinden» drücken")
+            self._wait(0.3)
 
     def base_for(self, a: float) -> float:
         return self.q0_ref + self.cyl.dir * math.radians(a)
@@ -90,8 +117,12 @@ class Plotter:
             for pose in poses:
                 lim.check_pose_target(pose)
 
-    def recover(self) -> None:
+    def recover(self, home: bool = False) -> None:
+        """Lamp off, pull back, straighten up, park beside the cloth.
+        home=True (Zurücksetzen / «Arm in Fahrstellung»): park at home_height_m,
+        then turn back to the cloth start (0°), the way it came, base joint only."""
         cyl = self.cyl
+        self._lamp_off()
         self.report(step="Lampe sichern: zurückziehen und nach unten drehen")
         pose = list(self.robot.pose())
         d = cyl.describe_pose(pose, self.robot.joints()[0])
@@ -102,13 +133,26 @@ class Plotter:
         q = list(self.robot.joints())
         self.report(step="Arm aufrichten (Ellbogen nach oben)")
         self._move_joints([q[0], -math.pi / 2, math.pi / 2, -math.pi / 2, math.pi / 2, q[5]], "aufrichten")
-        h = cyl.travel_h(cyl.clamp_h(pose[2]))
+        # home: always end at the same start pose (cloth start 0°, home_height_m, lamp facing the cloth)
+        h_home = self.cfg.get("home_height_m")
+        h = cyl.travel_h(cyl.clamp_h(h_home if home and h_home is not None else pose[2]))
         a = cyl.clamp_a(d["a"])
         self.report(step="in die geprüfte Fahrstellung")
         self._move_joints(self.joints_for_park(a, h), "Fahrstellung")
         self.state, self.a, self.h = "park", a, h
+        if home and abs(a) > 0.5:
+            self.rewind()
 
     def rewind(self) -> None:
+        if self.state == "surface":
+            self._lamp_off()
+            self.report(step="Rücklauf zum Startwinkel, Lampe aus, nur das Basisgelenk dreht", rewinding=True)
+            q = list(self.robot.joints())
+            q[0] -= self.cyl.dir * math.radians(self.a)
+            self._move_joints(q, "Rücklauf")
+            self.a = 0.0
+            self.report(rewinding=False)
+            return
         self.report(step="Rücklauf zum Startwinkel (Lampe zeigt nach unten)", rewinding=True)
         self._move_joints(self.joints_for_park(0.0, self.h, self.robot.joints()), "Rücklauf")
         self.a = 0.0
@@ -125,6 +169,40 @@ class Plotter:
             t = k / n
             self._move(cyl.park_pose(a0 + (a - a0) * t, h0 + (ht - h0) * t), self.v_travel, "fahren")
         self.a, self.h = a, ht
+
+    def glide(self, a: float, h: float) -> None:
+        cyl = self.cyl
+        h = cyl.clamp_h(h)
+        if abs(a - self.a) < 1e-6 and abs(h - self.h) < 1e-6:
+            return
+        n = max(1, math.ceil(abs(a - self.a) / self.cfg["travel_step_deg"]))
+        a0, h0 = self.a, self.h
+        for k in range(1, n + 1):
+            t = k / n
+            self._move(cyl.draw_pose(a0 + (a - a0) * t, h0 + (h - h0) * t), self.v_travel, "fahren")
+        self.a, self.h = a, h
+
+    def draw_path_switched(self, p: dict, i: int, n: int) -> None:
+        cyl = self.cyl
+        a, h = p["pts"][0]
+        if self.state == "park":
+            self.report(step=f"Pfad {i + 1}/{n}: zum Tuch fahren")
+            self._move(cyl.draw_pose(self.a, self.h), self.v_travel, "anfahren")
+            self.state = "surface"
+        self.report(step=f"Pfad {i + 1}/{n}: fahren, Lampe aus")
+        self.glide(a, h)
+        self.report(step=f"Pfad {i + 1}/{n}: Lampe an, belichten mit {p['speed'] * 1000:.0f} mm/s")
+        try:
+            self._lamp_on()
+            self._wait(p["dwell"] + self.dwell)
+            for a, h in p["pts"][1:]:
+                self._move(cyl.draw_pose(a, h), p["speed"], "zeichnen")
+                self._wait(self.dwell)
+        except BaseException:
+            self._lamp_off_quiet()
+            raise
+        self._lamp_off()
+        self.a, self.h = a, cyl.clamp_h(h)
 
     def short_hop(self, a0: float, h0: float, a1: float, h1: float) -> bool:
         hop = self.cfg.get("short_hop_m") or 0.0
@@ -163,8 +241,9 @@ class Plotter:
 
     def run_job(self, planned: list, a0: float, rewind: bool, on_path) -> None:
         self.rewound = False
-        if self.state != "park":
+        if self.state not in ("park", "surface"):
             self.recover()
+        self.wait_lamp()
         self.report(step="Auftrag prüfen")
         self.validate(planned)
         if rewind or self.a > a0 + self.cyl.job_arc + 1e-6:
@@ -172,6 +251,9 @@ class Plotter:
             self.rewound = True
         for i, p in enumerate(planned):
             on_path(i)
-            self.draw_path(p, i, len(planned), planned[i + 1] if i + 1 < len(planned) else None)
+            if self.cyl.switched:
+                self.draw_path_switched(p, i, len(planned))
+            else:
+                self.draw_path(p, i, len(planned), planned[i + 1] if i + 1 < len(planned) else None)
         on_path(len(planned))
         self.report(step="bereit")

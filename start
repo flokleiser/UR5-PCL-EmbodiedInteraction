@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
+# ./start                 simulator + viewer + server (default)
+# ./start --allow-real    same, and the page may switch to the real arm
+# ./start --real          real arm only: no simulator, no viewer; the page opens on
+#                         «Echter Roboter» and connects when you press the button there
+#                         (other IP: ./start --real --host 192.168.1.11)
 set -e
 cd "$(dirname "$0")"
 export VIEWER_SCENE="${VIEWER_SCENE:-flo-tuch}"
+if [ "$1" = "--real" ]; then
+  echo "Echter Roboter, ohne Simulator.   Seite: http://localhost:8765"
+  docker compose run --rm --no-deps -p 8765:8765 dev bash -c 'python3 students/flo/tonspur/server.py "$@"; exec bash' bash "$@"
+  exit
+fi
 docker compose up -d ursim viewer
 echo "Pendant: http://localhost:6080/vnc.html   Viewer: http://localhost:7001   Seite: http://localhost:8765"
 docker compose run --rm -p 8765:8765 dev bash -c 'python3 students/flo/tonspur/server.py "$@"; exec bash' bash "$@"

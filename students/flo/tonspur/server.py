@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -9,16 +11,18 @@ from urllib.parse import urlparse
 
 from ur5e import Robot
 from ur5e.cli import argument_parser, robot_kwargs
-from ur5e.config import resolve_host
+from ur5e.config import is_sim, resolve_host
 from ur5e.connection import RobotConnection
 
 import reach
 from executor import Aborted, Plotter
+from lamp import Lamp, LampError
 from geometry import HERE, Cylinder, load_config
 from planner import JobError, JobQueue, Lap, make_job, plan_job
 
 PAGE = HERE.parent / "tonspur-tuch.html"
 HISTORY = 40
+HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-]{0,62}$")
 
 
 def dashboard_stop(host: str) -> str:
@@ -33,9 +37,15 @@ def dashboard_stop(host: str) -> str:
 
 
 class Hub:
-    def __init__(self, cfg, cyl, target, host, robot_kw):
+    def __init__(self, cfg, cyl, target, host, robot_kw, allow_real=False, idle=False):
         self.cfg, self.cyl = cfg, cyl
+        # idle: don't connect until the page presses «Verbinden» (used by --real,
+        # so the arm is only taken over after the confirm dialog on the page)
+        self.idle = idle
         self.target, self.host, self.robot_kw = target, host, robot_kw
+        self.allow_real = allow_real or target == "real"
+        self.sim_host = resolve_host("sim")
+        self.gen = 0
         self.tag = "[SIM]" if target == "sim" else "[ECHTER ROBOTER]"
         self.lock = threading.RLock()
         self.queue = JobQueue(cfg)
@@ -47,11 +57,13 @@ class Hub:
         self.seed = None
         self.watch_tool = reach.Tool(cfg["lamp_tcp"])
         self.cloth_reset_pending = False
+        self.lamp = Lamp(cfg, target == "real") if cyl.switched else None
         self.abort = threading.Event()
         self.wake = threading.Event()
         self.version = 0
         self.vmax = 0.25
-        self.status = {"connected": False, "step": "verbinde …", "error": "", "rewinding": False,
+        self.status = {"connected": False,
+                       "step": "nicht verbunden: auf der Seite verbinden" if idle else "verbinde …", "error": "", "rewinding": False,
                        "base_range": None, "estop_msg": ""}
         self.live = {}
 
@@ -79,6 +91,8 @@ class Hub:
         return job, gone
 
     def estop_now(self, reason=None):
+        if self.lamp is not None:
+            self.lamp.set(False, wait=False)
         with self.lock:
             self.estop = True
             self.abort.set()
@@ -104,6 +118,78 @@ class Hub:
             self.bump()
         self.log("Zurückgesetzt")
         self.wake.set()
+
+    def park(self):
+        with self.lock:
+            if self.estop:
+                raise JobError("NOT-AUS aktiv: erst zurücksetzen")
+            if self.current:
+                raise JobError("Ein Auftrag läuft: erst danach")
+            if not self.status.get("connected"):
+                raise JobError("nicht verbunden")
+            self.secure_now = True
+        self.log("Fahrstellung angefordert")
+        self.wake.set()
+
+    def set_dry(self, on: bool):
+        with self.lock:
+            if self.current:
+                raise JobError("Ein Auftrag läuft: erst danach umschalten")
+            lamp = self.lamp
+            with lamp.cond:
+                lamp.dry = on
+                lamp.required = self.target == "real" and not on
+                lamp.on = False
+                lamp.seq += 1
+                lamp.lit_by_dmx = False
+                lamp.cond.notify_all()
+            self.bump()
+        self.log("TROCKENLAUF an: nur Bewegung, Lampe bleibt aus" if on else "Trockenlauf aus: Lampe wird wieder geschaltet")
+
+    def switch(self, data):
+        target = data.get("target")
+        host = str(data.get("host") or "").strip()
+        try:
+            payload = float(data.get("payload") or 0.0)
+        except (TypeError, ValueError):
+            raise JobError("Last muss eine Zahl in kg sein")
+        if target not in ("sim", "real"):
+            raise JobError("Ziel muss sim oder real sein")
+        if target == "sim" and not host:
+            host = self.sim_host
+        if not HOST_RE.match(host):
+            raise JobError(f"«{host}» ist keine gültige IP-Adresse oder kein Hostname")
+        if target == "sim" and not is_sim(host):
+            raise JobError(f"{host} ist kein Simulator: für einen echten Roboter «Echter Roboter» wählen")
+        if target == "real":
+            if not self.allow_real:
+                raise JobError("Echter Roboter gesperrt: Server mit --allow-real starten (z. B. ./start --allow-real)")
+            if is_sim(host):
+                raise JobError(f"{host} ist der Simulator: dafür «Simulator» wählen")
+            if not 0 < payload <= 5:
+                raise JobError("Für den echten Roboter die gemessene Masse der Lampe in kg angeben (0 < Last ≤ 5)")
+        with self.lock:
+            if self.current:
+                raise JobError("Ein Auftrag läuft: warten oder NOT-AUS drücken, dann wechseln")
+            cleared = len(self.queue.clear())
+            kw = {"target": target, "host": host, "payload_kg": payload if target == "real" else 0.0,
+                  "tcp": tuple(self.cfg["lamp_tcp"])}
+            if target == "real":
+                kw["allow_real"] = True
+            self.target, self.host, self.robot_kw = target, host, kw
+            self.tag = "[SIM]" if target == "sim" else "[ECHTER ROBOTER]"
+            if self.lamp is not None:
+                self.lamp.required = target == "real"
+                self.lamp.dry = False
+            self.gen += 1
+            self.idle = False
+            self.live = {}
+            self.status.update(connected=False, step="wechsle Verbindung …", error="", base_range=None)
+            self.bump()
+        who = f"Simulator {host}" if target == "sim" else f"ECHTER ROBOTER {host}, Last {payload} kg"
+        self.log(f"Verbindung gewechselt zu {who}" + (f"; {cleared} wartende Aufträge gelöscht" if cleared else ""))
+        self.wake.set()
+        return who, cleared
 
     def reset_cloth(self):
         with self.lock:
@@ -151,9 +237,12 @@ class Hub:
     def status_view(self):
         with self.lock:
             cur = self.current
-            return dict(self.status, target=self.target, host=self.host, estop=self.estop,
+            return dict(self.status, target=self.target, host=self.host, estop=self.estop, idle=self.idle,
+                        allow_real=self.allow_real, sim_host=self.sim_host,
+                        payload=self.robot_kw.get("payload_kg") or 0.0,
                         version=self.version, lap=self.lap.lap, cursor=self.lap.cursor,
-                        live=self.live, queue=[self.job_view(j, False) for j in self.queue.items],
+                        live=self.live, lamp=self.lamp.view() if self.lamp else {"control": "always_on"},
+                        queue=[self.job_view(j, False) for j in self.queue.items],
                         dropped=len(self.queue.dropped),
                         current=self.job_view(cur, False) if cur else None)
 
@@ -163,7 +252,17 @@ class Hub:
 
     def worker(self):
         robot = plotter = None
+        gen = self.gen
         while True:
+            if gen != self.gen:
+                if robot is not None:
+                    robot.disconnect()
+                    robot = plotter = None
+                gen = self.gen
+            if self.idle:
+                self.wake.wait(0.5)
+                self.wake.clear()
+                continue
             if self.estop:
                 if robot is not None:
                     robot.disconnect()
@@ -175,19 +274,21 @@ class Hub:
             if robot is None:
                 try:
                     self.report(step="verbinde …")
-                    robot = Robot(**self.robot_kw).connect()
+                    with self.lock:
+                        kw = dict(self.robot_kw)
+                    robot = Robot(**kw).connect()
+                    if gen != self.gen:
+                        robot.disconnect()
+                        robot = plotter = None
+                        continue
                     self.vmax = robot.limits.tcp_speed_max
-                    plotter = Plotter(robot, self.cyl, self.cfg, self.abort, self.report)
+                    plotter = Plotter(robot, self.cyl, self.cfg, self.abort, self.report, self.lamp)
                     rng = plotter.setup(self.seed)
                     self.report(connected=True, error="", base_range=rng, step="bereit")
                     self.log(f"verbunden mit {self.host}, Profil '{robot.limits.name}', "
                              f"Basisgelenk {rng['base_start_deg']:.0f}° bis {rng['base_end_deg']:.0f}°")
                     with self.lock:
                         self.bump()
-                    if self.secure_now:
-                        plotter.recover()
-                        self.secure_now = False
-                        self.report(step="bereit")
                 except Exception as e:
                     if robot is not None:
                         robot.disconnect()
@@ -196,8 +297,23 @@ class Hub:
                     self.wake.wait(3)
                     self.wake.clear()
                     continue
+            if self.secure_now and gen == self.gen:
+                self.secure_now = False
+                self.log("fahre in die Fahrstellung (zurückziehen, aufrichten, Fahrstellung)")
+                try:
+                    plotter.recover(home=True)
+                    self.report(step="bereit", error="")
+                    self.log("in der Fahrstellung am Tuchanfang (0°)")
+                except Aborted:
+                    self.log("Fahrstellung abgebrochen")
+                    plotter.state = None
+                except Exception as e:
+                    self.log(f"Fahrstellung nicht erreicht: {e}")
+                    self.report(error=f"Fahrstellung: {e}", step="bereit")
+                    plotter.state = None
+                continue
             with self.lock:
-                job = self.queue.pop()
+                job = self.queue.pop() if gen == self.gen else None
                 if job:
                     lap, a0, rew = self.lap.place()
                     job.update(lap=lap, a0=a0, a1=a0 + self.cyl.job_arc, rewind=rew, progress=0, state="zeichnet",
@@ -221,6 +337,10 @@ class Hub:
                 state = "fertig"
             except Aborted:
                 state = "abgebrochen"
+            except LampError as e:
+                state = f"Fehler: {e}"
+                self.report(error=f"Auftrag {job['id']}: {e}")
+                self.estop_now(f"Lampe: {e}")
             except Exception as e:
                 state = "abgebrochen" if self.abort.is_set() else f"Fehler: {e}"
                 if not self.abort.is_set():
@@ -246,10 +366,15 @@ class Hub:
 
     def poller(self):
         conn = None
+        host = None
         while True:
             try:
+                if conn is not None and host != self.host:
+                    conn.disconnect()
+                    conn = None
                 if conn is None:
-                    conn = RobotConnection(self.host).connect()
+                    host = self.host
+                    conn = RobotConnection(host).connect()
                 q = conn.receive.getActualQ()
                 pose = conn.receive.getActualTCPPose()
                 d = self.cyl.describe_pose(pose, q[0])
@@ -258,11 +383,14 @@ class Hub:
                         "base_deg": round(math.degrees(q[0]), 1), "t": time.time()}
                 with self.lock:
                     self.live = live
-                    armed = not self.estop
+                    armed = not self.estop and not self.idle
                 bad = reach.below_base(q, self.watch_tool)
                 if bad and armed:
                     self.log(f"WÄCHTER: {bad} unter der Basis (Gelenke {[round(math.degrees(v)) for v in q]}°)")
                     self.estop_now(f"Wächter: {bad} unter der Basis")
+                if self.lamp is not None and armed and self.lamp.lost_while_on():
+                    self.log("WÄCHTER: DMX-Verbindung verloren, während die Lampe an war")
+                    self.estop_now("Wächter: DMX-Verbindung verloren, Lampe evtl. noch an")
                 time.sleep(0.1)
             except Exception:
                 if conn is not None:
@@ -313,8 +441,37 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return self._send(400, {"error": "kein gültiges JSON"})
         hub, path = self.hub, urlparse(self.path).path
+        if path.startswith("/api/lamp/"):
+            if hub.lamp is None:
+                return self._send(409, {"error": "lamp_control ist nicht dmx"})
+            try:
+                if path == "/api/lamp/poll":
+                    return self._send(200, hub.lamp.poll(int(data.get("since", -1)), str(data.get("device") or "DMX")[:60]))
+                if path == "/api/lamp/ack":
+                    hub.lamp.ack(int(data["seq"]), str(data.get("device") or "DMX")[:60])
+                    return self._send(200, {"ok": True})
+                if path == "/api/lamp/dry":
+                    hub.set_dry(bool(data.get("on")))
+                    return self._send(200, {"ok": True})
+                if path == "/api/lamp/release":
+                    hub.lamp.release()
+                    return self._send(200, {"ok": True})
+            except (KeyError, TypeError, ValueError, JobError) as e:
+                return self._send(400, {"error": str(e)})
         if path == "/api/estop":
             return self._send(200, {"ok": True, "msg": hub.estop_now()})
+        if path == "/api/connect":
+            try:
+                who, cleared = hub.switch(data)
+            except JobError as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(200, {"ok": True, "msg": f"verbinde mit {who}", "cleared": cleared})
+        if path == "/api/park":
+            try:
+                hub.park()
+            except JobError as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(200, {"ok": True})
         if path == "/api/reset":
             hub.reset()
             return self._send(200, {"ok": True})
@@ -335,7 +492,16 @@ def main():
     ap = argument_parser("Tonspur-Tuch: UV-Plotter auf dem Zylinder. Standardziel ist der Simulator.")
     ap.add_argument("--config", default=None, help="config.json (Standard: neben server.py)")
     ap.add_argument("--port", type=int, default=None, help="Port der Vorschau (Standard aus config.json)")
+    ap.add_argument("--allow-real", action="store_true",
+                    help="erlaubt, auf der Seite zu einem echten Roboter zu wechseln (IP und Last dort eingeben)")
+    ap.add_argument("--real", action="store_true",
+                    help="ohne Simulator starten: Seite steht auf «Echter Roboter» (IP aus --host / UR_HOST, "
+                         "sonst 192.168.1.11), verbunden wird erst mit dem Knopf auf der Seite")
     args = ap.parse_args()
+    if args.real:
+        if args.target == "real":
+            raise SystemExit("--real und --target real nicht zusammen verwenden")
+        args.allow_real = True
     cfg = load_config(args.config)
     cyl = Cylinder(cfg)
     roll, problems, seed = reach.choose_roll(cyl)
@@ -343,22 +509,48 @@ def main():
         raise SystemExit(f"config.json verlangt Posen, die der Arm nicht erreicht (beste Drehung der Lampe {roll:.0f}°):\n  "
                          + "\n  ".join(problems))
     cyl.roll = roll
+    if args.real:
+        host = args.host or os.environ.get("UR_HOST") or "192.168.1.11"
+        if is_sim(host):
+            raise SystemExit(f"--real: {host} ist der Simulator")
+        kw = {"target": "real", "host": host, "allow_real": True, "payload_kg": args.payload,
+              "tcp": tuple(cfg["lamp_tcp"])}
+        hub = Hub(cfg, cyl, "real", host, kw, True, idle=True)
+        return serve(hub, cfg, cyl, args, host, seed)
     kw = robot_kwargs(args)
     if args.target == "real" and args.payload <= 0:
         raise SystemExit("--target real braucht --payload KG mit der gemessenen Masse der Lampe")
     kw["payload_kg"] = args.payload
     kw["tcp"] = tuple(cfg["lamp_tcp"])
     host = kw.get("host") or resolve_host(args.target)
-    port = args.port or cfg["port"]
-    hub = Hub(cfg, cyl, args.target, host, kw)
+    kw["host"] = host
+    hub = Hub(cfg, cyl, args.target, host, kw, args.allow_real)
+    serve(hub, cfg, cyl, args, host, seed)
+
+
+def serve(hub, cfg, cyl, args, host, seed=None):
     hub.seed = seed
     Handler.hub = hub
+    target = hub.target
+    port = args.port or cfg["port"]
     line = "=" * 64
-    who = f"SIMULATOR ({host})" if args.target == "sim" else f"!!! ECHTER ROBOTER {host} !!!"
+    if not cyl.switched:
+        lamp_line = "immer an, wird zum Fahren nach unten gedreht"
+    elif target == "real":
+        lamp_line = f"über DMX Kanal {cfg['dmx_channel']}, Pflicht: Aufträge warten, bis die Seite DMX verbunden hat"
+    else:
+        lamp_line = f"über DMX Kanal {cfg['dmx_channel']}, ohne DMX-Verbindung nur simuliert"
+    who = f"SIMULATOR ({host})" if target == "sim" else f"!!! ECHTER ROBOTER {host} !!!"
+    if hub.idle:
+        who += ("\n  noch NICHT verbunden: auf der Seite Lampe kg eingeben und"
+                "\n  «Mit echtem Roboter verbinden» drücken")
+    if hub.allow_real and target == "sim":
+        who += "\n  !!! --allow-real: auf der Seite kann zu einem echten Roboter gewechselt werden !!!"
     print(f"{line}\n  ZIEL: {who}\n  Vorschau: http://localhost:{port}/\n"
           f"  Tuch r={cyl.R} m, Lampe {cfg['lamp_distance_m'] * 100:.0f} cm davor, "
           f"Höhe {cyl.h_min:.2f}…{cyl.h_max:.2f} m, Start {cyl.start:.0f}°, {cyl.job_arc:.0f}° pro Auftrag\n"
-          f"  Lampe TCP {[round(v, 4) for v in cfg['lamp_tcp']]}, um den Strahl gedreht {cyl.roll:.0f}°\n{line}",
+          f"  Lampe TCP {[round(v, 4) for v in cfg['lamp_tcp']]}, um den Strahl gedreht {cyl.roll:.0f}°\n"
+          f"  Lampe: {lamp_line}\n{line}",
           flush=True)
     threading.Thread(target=hub.worker, daemon=True).start()
     threading.Thread(target=hub.poller, daemon=True).start()

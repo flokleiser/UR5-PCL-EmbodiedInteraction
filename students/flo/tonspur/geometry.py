@@ -7,6 +7,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CONFIG_FILE = HERE / "config.json"
 POLICIES = ("drop_oldest", "drop_newest", "reject")
+LAMP_CONTROLS = ("dmx", "always_on")
 
 
 class ConfigError(Exception):
@@ -25,6 +26,16 @@ def load_config(path=None) -> dict:
         raise ConfigError("need 0 < retract_radius_m <= lift_radius_m < drawing radius")
     if cfg["queue_full_policy"] not in POLICIES:
         raise ConfigError(f"queue_full_policy must be one of {POLICIES}")
+    cfg.setdefault("lamp_control", "always_on")
+    if cfg["lamp_control"] not in LAMP_CONTROLS:
+        raise ConfigError(f"lamp_control must be one of {LAMP_CONTROLS}")
+    if cfg["lamp_control"] == "dmx":
+        if not 1 <= cfg["dmx_channel"] <= 512:
+            raise ConfigError("dmx_channel must be 1…512")
+        if not (0 <= cfg["dmx_on_value"] <= 255 and 0 <= cfg["dmx_off_value"] <= 255):
+            raise ConfigError("dmx_on_value and dmx_off_value must be 0…255")
+        if cfg["lamp_switch_timeout_s"] <= 0 or cfg["lamp_settle_s"] < 0:
+            raise ConfigError("lamp_switch_timeout_s must be > 0 and lamp_settle_s >= 0")
     if cfg["queue_max"] < 1:
         raise ConfigError("queue_max must be at least 1")
     return cfg
@@ -81,7 +92,8 @@ class Cylinder:
         self.start = cfg["start_angle_deg"]
         self.dir = cfg["direction"]
         self.job_arc = cfg["job_arc_deg"]
-        self.tilt = bool(cfg["tilt_down_on_travel"])
+        self.switched = cfg["lamp_control"] == "dmx"
+        self.tilt = bool(cfg["tilt_down_on_travel"]) and not self.switched
         self.h_travel_max = cfg["travel_height_max_m"]
         self.roll = float(cfg.get("lamp_roll_deg") or 0.0)
 
