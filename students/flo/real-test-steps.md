@@ -100,8 +100,13 @@ arm and switch the lamp off, but they don't replace the red button.
     - The first job begins with the takeover: the arm pulls back, straightens up (elbow up) and moves
       into its checked posture beside the cloth radius.
     - Watch the whole job. On the page, the lamp should switch on only while a line or dot is drawn.
-19. **Rundentest,** still covered: eight jobs go once around, then the base turns back. Watch the
-    cables at the cart's corners and the handle.
+19. **Rundentest:** the arm goes once around the cloth at drawing distance, halfway up the band,
+    with the lamp off, then the base turns back to 0°. Hang the cloth (or hold a tape measure) and
+    check the lamp stays about 5 cm from it all the way round. Watch the cables at the cart's
+    corners and the handle.
+    Then **Höhentest:** at 0° the lamp goes to the highest drawable point (0.60 m above the base),
+    then to the lowest (0.05 m), waiting 3 s at each. Check the lamp, wrist and cables clear the
+    cloth's top and hem and the cart.
 20. **Exposure test.** Pin a scrap of cyanotype fabric about 5 cm in front of the lamp's path,
     uncover the lamp, and run the Testmuster again. Its five lines (20–150 mm/s) and five dots
     (0.25–4 s) show which speed gives which darkness.
@@ -119,6 +124,7 @@ arm and switch the lamp off, but they don't replace the red button.
 | what you see | what it means | what to do |
 |---|---|---|
 | page badge stays green / "Simulator" | still connected to the simulator | redo step 16 |
+| "antwortet nicht auf Port 30004" under *Verbindung* | the Mac doesn't reach the robot | step 10–12: cable, manual IP on the Ethernet port, `ping`; the page keeps working meanwhile |
 | "Echter Roboter gesperrt", button greyed out | server started with plain `./start` | restart with `./start --real` |
 | "Verbindung: …" error under *Verbindung* after pressing the button | the server (in Docker) can't open RTDE to the arm | check the pendant is in Remote Control; in the terminal `nc -vz -w 3 192.168.1.11 30004` |
 | `profile 'cart_against_wall'` in the terminal | framework update missing | step 1, then restart |

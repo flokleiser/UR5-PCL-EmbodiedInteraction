@@ -66,6 +66,7 @@ def plan_job(cyl: Cylinder, cfg: dict, job: dict, a0: float, vmax: float) -> lis
     a1 = a0 + cyl.job_arc
     span = cyl.h_max - cyl.h_min
     planned = []
+    extra = 0.0 if job.get("mode") == "test" else cfg["dot_extra_s"]
     for p in job["paths"]:
         pts = []
         for u, v in p["pts"]:
@@ -74,7 +75,7 @@ def plan_job(cyl: Cylinder, cfg: dict, job: dict, a0: float, vmax: float) -> lis
             pts.append([a, h])
         pts = densify(pts, cfg["max_step_deg"])
         pts = [[cyl.clamp_a(a, a0, a1), cyl.clamp_h(h)] for a, h in pts]
-        planned.append({"pts": pts, "speed": path_speed(cfg, p, vmax), "dwell": p["dwell"]})
+        planned.append({"pts": pts, "speed": path_speed(cfg, p, vmax), "dwell": p["dwell"] + (extra if len(p["pts"]) == 1 else 0.0)})
     return planned
 
 

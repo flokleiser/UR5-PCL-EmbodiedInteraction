@@ -204,6 +204,50 @@ class Plotter:
         self._lamp_off()
         self.a, self.h = a, cyl.clamp_h(h)
 
+    def sweep(self) -> None:
+        cyl = self.cyl
+        self._lamp_off()
+        if self.state not in ("park", "surface"):
+            self.recover()
+        h = cyl.clamp_h((cyl.h_min + cyl.h_max) / 2)
+        if self.a > 0.5:
+            self.rewind()
+        if cyl.switched:
+            if self.state == "park":
+                self.report(step="Tuchabstand: zum Tuch fahren, Lampe aus")
+                self._move(cyl.draw_pose(self.a, self.h), self.v_travel, "anfahren")
+                self.state = "surface"
+            self.glide(0.0, h)
+            r = cyl.r_draw
+            self.report(step=f"Tuchabstand: eine Runde in Zeichenabstand (Lampe {r:.3f} m von der Achse, Tuch {cyl.R:.3f} m), Lampe aus")
+            self.glide(360.0, h)
+        else:
+            self.travel(0.0, h)
+            self.report(step="Tuchabstand: eine Runde in Fahrstellung (Lampe ist immer an, deshalb nicht am Tuch)")
+            self.travel(360.0, h)
+        self.rewind()
+        self.report(step="bereit")
+
+    def height_test(self) -> None:
+        cyl = self.cyl
+        if not cyl.switched:
+            raise RuntimeError("Höhentest braucht lamp_control \"dmx\": mit Dauerlicht würde er belichten")
+        self._lamp_off()
+        if self.state not in ("park", "surface"):
+            self.recover()
+        if self.a > 0.5:
+            self.rewind()
+        if self.state == "park":
+            self.report(step="Höhentest: zum Tuch fahren, Lampe aus")
+            self._move(cyl.draw_pose(self.a, self.h), self.v_travel, "anfahren")
+            self.state = "surface"
+        for name, h in (("höchster", cyl.h_max), ("tiefster", cyl.h_min)):
+            self.report(step=f"Höhentest: {name} Zeichenpunkt, {h:.2f} m über der Basis, Lampe aus")
+            self.glide(0.0, h)
+            self._wait(3.0)
+        self.glide(0.0, (cyl.h_min + cyl.h_max) / 2)
+        self.report(step="bereit")
+
     def short_hop(self, a0: float, h0: float, a1: float, h1: float) -> bool:
         hop = self.cfg.get("short_hop_m") or 0.0
         if not self.cyl.tilt or hop <= 0:

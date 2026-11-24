@@ -26,6 +26,9 @@ def load_config(path=None) -> dict:
         raise ConfigError("need 0 < retract_radius_m <= lift_radius_m < drawing radius")
     if cfg["queue_full_policy"] not in POLICIES:
         raise ConfigError(f"queue_full_policy must be one of {POLICIES}")
+    cfg.setdefault("dot_extra_s", 0.0)
+    if cfg["dot_extra_s"] < 0:
+        raise ConfigError("dot_extra_s must be >= 0")
     cfg.setdefault("lamp_control", "always_on")
     if cfg["lamp_control"] not in LAMP_CONTROLS:
         raise ConfigError(f"lamp_control must be one of {LAMP_CONTROLS}")

@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +24,13 @@ from planner import JobError, JobQueue, Lap, make_job, plan_job
 PAGE = HERE.parent / "tonspur-tuch.html"
 HISTORY = 40
 HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-]{0,62}$")
+
+
+def probe(host: str) -> None:
+    try:
+        socket.create_connection((host, 30004), timeout=2).close()
+    except OSError as e:
+        raise ConnectionError(f"{host} antwortet nicht auf Port 30004 (RTDE): Kabel, IP des Macs und Remote Control prüfen ({e})")
 
 
 def dashboard_stop(host: str) -> str:
@@ -54,6 +62,7 @@ class Hub:
         self.history = []
         self.estop = False
         self.secure_now = False
+        self.sweep_now = False
         self.seed = None
         self.watch_tool = reach.Tool(cfg["lamp_tcp"])
         self.cloth_reset_pending = False
@@ -129,6 +138,19 @@ class Hub:
                 raise JobError("nicht verbunden")
             self.secure_now = True
         self.log("Fahrstellung angefordert")
+        self.wake.set()
+
+    def sweep(self, kind="round"):
+        with self.lock:
+            if self.estop:
+                raise JobError("NOT-AUS aktiv: erst zurücksetzen")
+            if self.current:
+                raise JobError("Ein Auftrag läuft: erst danach")
+            if not self.status.get("connected"):
+                raise JobError("nicht verbunden")
+            self.sweep_now = kind
+        self.log("Höhentest angefordert: höchster und tiefster Zeichenpunkt, Lampe aus" if kind == "height"
+                 else "Rundentest angefordert: eine Runde in Zeichenabstand, Lampe aus")
         self.wake.set()
 
     def set_dry(self, on: bool):
@@ -276,6 +298,7 @@ class Hub:
                     self.report(step="verbinde …")
                     with self.lock:
                         kw = dict(self.robot_kw)
+                    probe(kw["host"])
                     robot = Robot(**kw).connect()
                     if gen != self.gen:
                         robot.disconnect()
@@ -310,6 +333,20 @@ class Hub:
                 except Exception as e:
                     self.log(f"Fahrstellung nicht erreicht: {e}")
                     self.report(error=f"Fahrstellung: {e}", step="bereit")
+                    plotter.state = None
+                continue
+            if self.sweep_now and gen == self.gen:
+                kind, self.sweep_now = self.sweep_now, False
+                name = "Höhentest" if kind == "height" else "Rundentest"
+                try:
+                    plotter.height_test() if kind == "height" else plotter.sweep()
+                    self.log(f"{name} fertig, am Tuchanfang (0°)")
+                except Aborted:
+                    self.log(f"{name} abgebrochen")
+                    plotter.state = None
+                except Exception as e:
+                    self.log(f"{name}: {e}")
+                    self.report(error=f"{name}: {e}", step="bereit")
                     plotter.state = None
                 continue
             with self.lock:
@@ -368,12 +405,21 @@ class Hub:
         conn = None
         host = None
         while True:
+            if self.idle:
+                if conn is not None:
+                    conn.disconnect()
+                    conn = None
+                    with self.lock:
+                        self.live = {}
+                time.sleep(0.5)
+                continue
             try:
                 if conn is not None and host != self.host:
                     conn.disconnect()
                     conn = None
                 if conn is None:
                     host = self.host
+                    probe(host)
                     conn = RobotConnection(host).connect()
                 q = conn.receive.getActualQ()
                 pose = conn.receive.getActualTCPPose()
@@ -472,6 +518,12 @@ class Handler(BaseHTTPRequestHandler):
             except JobError as e:
                 return self._send(400, {"error": str(e)})
             return self._send(200, {"ok": True})
+        if path == "/api/sweep":
+            try:
+                hub.sweep("height" if data.get("kind") == "height" else "round")
+            except JobError as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(200, {"ok": True})
         if path == "/api/reset":
             hub.reset()
             return self._send(200, {"ok": True})
@@ -552,9 +604,9 @@ def serve(hub, cfg, cyl, args, host, seed=None):
           f"  Lampe TCP {[round(v, 4) for v in cfg['lamp_tcp']]}, um den Strahl gedreht {cyl.roll:.0f}°\n"
           f"  Lampe: {lamp_line}\n{line}",
           flush=True)
+    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     threading.Thread(target=hub.worker, daemon=True).start()
     threading.Thread(target=hub.poller, daemon=True).start()
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

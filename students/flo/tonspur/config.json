@@ -28,10 +28,11 @@
   "max_step_deg": 5.0,
   "travel_step_deg": 15.0,
 
-  "draw_speed_dark_mps": 0.05,
-  "draw_speed_light_mps": 0.15,
-  "point_dwell_s": 0.05,
-  "dot_dwell_max_s": 0.6,
+  "draw_speed_dark_mps": 0.025,
+  "draw_speed_light_mps": 0.075,
+  "point_dwell_s": 0.1,
+  "dot_dwell_max_s": 5.0,
+  "dot_extra_s": 3.0,
   "travel_speed_mps": null,
   "rewind_speed_radps": null,
 

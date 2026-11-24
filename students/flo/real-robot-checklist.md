@@ -160,8 +160,11 @@ Enter the values in `students/flo/tonspur/config.json`.
     posture.
   - Then send the **Testmuster** and watch the whole job with a hand on the red emergency stop. The
     page's NOT-AUS button and the Esc key also work, but they don't replace the red button.
-- [ ] **Rundentest:** one full lap plus the rewind. Watch the cables at the cart's corners and the
-      handle.
+- [ ] **Rundentest:** one full turn at drawing distance with the lamp off, then the rewind. Check
+      the lamp stays about 5 cm from the cloth all the way round, and watch the cables at the cart's
+      corners and the handle.
+- [ ] **Höhentest:** at 0° the lamp goes to the highest and the lowest drawable point (3 s each),
+      lamp off. Check nothing touches the cloth, its frame or the cart at either end.
 - [ ] **Exposure test** with the lamp on, on a scrap of cyanotype cloth: run the Testmuster. Its five
       lines (20–150 mm/s) and five dots (0.25–4 s) show which speed gives which darkness. Set
       `draw_speed_dark_mps`, `draw_speed_light_mps`, `point_dwell_s` and `dot_dwell_max_s` from the

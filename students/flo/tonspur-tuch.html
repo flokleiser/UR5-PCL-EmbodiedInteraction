@@ -172,6 +172,7 @@ canvas.ruler{display:block;margin-top:8px}
       <label class="check" for="autoSend"><input type="checkbox" id="autoSend" checked> Neue Aufnahmen automatisch senden</label>
       <div class="row">
         <button type="button" class="btn" id="lapTest" disabled>Rundentest</button>
+        <button type="button" class="btn" id="heightTest" disabled>Höhentest</button>
         <button type="button" class="btn" id="clearQ" disabled>Warteschlange leeren</button>
       </div>
       <p class="msg err" id="sendHint" hidden></p>
@@ -300,7 +301,7 @@ const els = {
   connGo: $('connGo'), connHint: $('connHint'), connMsg: $('connMsg'), dryRun: $('dryRun'), dryBox: $('dryBox'), play: $('play'), playInfo: $('playInfo'),
   micsOn: $('micsOn'), autoSend: $('autoSend'), micList: $('micList'), recSecs: $('recSecs'),
   gapSecs: $('gapSecs'), maxSecs: $('maxSecs'), minSecs: $('minSecs'),
-  send: $('send'), lapTest: $('lapTest'), clearQ: $('clearQ'), robotHint: $('robotHint'), sendHint: $('sendHint'),
+  send: $('send'), lapTest: $('lapTest'), heightTest: $('heightTest'), clearQ: $('clearQ'), robotHint: $('robotHint'), sendHint: $('sendHint'),
   badge: $('badge'), estop: $('estop'), reset: $('reset'), park: $('park'), save: $('save'),
   source: $('source'), meta: $('meta'), msg: $('msg'), micHint: $('micHint'),
   modeName: $('modeName'), modeText: $('modeText'), legend: $('legend'),
@@ -311,7 +312,7 @@ const els = {
 let CFG = {
   cloth_radius_m: 0.844, cloth_bottom_m: -0.425, cloth_height_m: 1.5, lamp_distance_m: 0.05, spot_diameter_m: 0.015,
   height_min_m: 0.05, height_max_m: 0.60, start_angle_deg: -180, direction: 1, job_arc_deg: 45,
-  max_step_deg: 5, draw_speed_dark_mps: 0.05, draw_speed_light_mps: 0.15, point_dwell_s: 0.05, dot_dwell_max_s: 0.6,
+  max_step_deg: 5, draw_speed_dark_mps: 0.025, draw_speed_light_mps: 0.075, point_dwell_s: 0.1, dot_dwell_max_s: 1.2, dot_extra_s: 2.0,
   test_speeds_mps: [0.02, 0.04, 0.07, 0.1, 0.15], test_dwells_s: [0.25, 0.5, 1, 2, 4], vmax: 0.25, target: null, host: null,
   recording_s: 10, recording_max_s: 30, min_sound_s: 1.0, gap_keep_s: 0.3, noise_reduction: 1.5,
   mic_threshold_db: -35, est_path_overhead_s: 2.5,
@@ -685,11 +686,6 @@ function genTest(G) {
   return out;
 }
 
-function genLapTest() {
-  return [{ pts: [[UM, M], [1 - UM, M], [1 - UM, 1 - M], [UM, 1 - M], [UM, M]], dark: 0.5, dwell: 0 },
-          { pts: [[UM, M], [1 - UM, 1 - M]], dark: 0.5, dwell: 0 }];
-}
-
 function median(a) { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; }
 
 function simplify(pts, tol, G) {
@@ -909,10 +905,11 @@ function renderPattern() {
   let len = 0, time = 0;
   for (const p of state.paths) {
     const pts = densifyU(p.pts).map(toCm), v = pathSpeed(p);
-    exposePath(g, pts, v, p.dwell || 0, G.spotCm);
+    const dw = (p.dwell || 0) + (p.pts.length === 1 && state.mode !== 'test' ? CFG.dot_extra_s || 0 : 0);
+    exposePath(g, pts, v, dw, G.spotCm);
     list.push(pts);
     for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    time += (p.dwell || 0) + pts.length * CFG.point_dwell_s;
+    time += dw + pts.length * CFG.point_dwell_s;
     for (let i = 1; i < pts.length; i++) time += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) / 100 / v;
   }
   finishCloth(g, G.arcCm, G.hCm, L.s);
@@ -1065,6 +1062,7 @@ function updateButtons() {
   else if (robot.online && s && !s.connected) why = `Roboter nicht verbunden (${s.step || '…'})` + (s.error ? `: ${s.error}` : '');
   els.sendHint.textContent = why; els.sendHint.hidden = !why;
   els.lapTest.disabled = !ok;
+  els.heightTest.disabled = !ok;
   els.clearQ.disabled = !robot.online;
   els.clothReset.disabled = !robot.online;
   els.estop.disabled = !robot.online;
@@ -1489,11 +1487,16 @@ async function sendJob() {
   } catch (e) { showMsg('Auftrag abgelehnt: ' + e.message); }
 }
 async function sendLapTest() {
-  const n = Math.ceil(360 / CFG.job_arc_deg - 1e-9) + 1, t = Date.now() / 1000;
   try {
-    for (let k = 1; k <= n; k++) await api('/api/jobs', { name: `Rundentest ${k}/${n}`, mode: 'test', trigger: t + k / 1000, paths: genLapTest() });
-    showMsg(`${n} Rundentest-Aufträge gesendet: ${n - 1} füllen eine Runde, der letzte löst den Rücklauf aus.`);
+    await api('/api/sweep', {});
+    showMsg('Rundentest: Der Arm fährt mit ausgeschalteter Lampe einmal im Zeichenabstand um das Tuch und dreht dann zurück auf 0°. Fortschritt siehe Status.');
   } catch (e) { showMsg('Rundentest abgelehnt: ' + e.message); }
+}
+async function sendHeightTest() {
+  try {
+    await api('/api/sweep', { kind: 'height' });
+    showMsg(`Höhentest: Der Arm fährt mit ausgeschalteter Lampe am Tuchanfang (0°) zum höchsten (${CFG.height_max_m.toFixed(2)} m) und zum tiefsten (${CFG.height_min_m.toFixed(2)} m) Zeichenpunkt und wartet dort je 3 s. Fortschritt siehe Status.`);
+  } catch (e) { showMsg('Höhentest abgelehnt: ' + e.message); }
 }
 async function estop() {
   if (DMX.writer) { DMX.test = false; dmxSet(false); }
@@ -2027,6 +2030,7 @@ els.file.addEventListener('change', () => loadFile(els.file.files && els.file.fi
 els.save.addEventListener('click', saveImage);
 els.send.addEventListener('click', sendJob);
 els.lapTest.addEventListener('click', sendLapTest);
+els.heightTest.addEventListener('click', sendHeightTest);
 els.clearQ.addEventListener('click', async () => { try { const r = await api('/api/queue/clear', {}); showMsg(`${r.cleared} Aufträge aus der Warteschlange gelöscht.`); } catch (e) { showMsg(e.message); } });
 els.estop.addEventListener('click', estop);
 els.dmxConnect.addEventListener('click', () => { if (DMX.writer) dmxClose(); else dmxConnect(); });
