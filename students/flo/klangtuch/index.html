@@ -1,145 +1,51 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1F3B7A">
-<title>Tonspur-Tuch hören</title>
-<meta name="description" content="Fotografiere das Cyanotypie-Tuch und höre seine Spuren als Spieldose.">
+<meta name="theme-color" content="#002A52">
+<title>Blaupause</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
 <style>
-:root{
-  --bg:#F2EFE6; --surface:#FBFAF6; --fg:#14213D; --muted:#5B6478; --line:#D8D3C4;
-  --ink:#1F3B7A; --ink-2:#2E56B0; --on-ink:#FFFFFF; --pin:#F2B33D; --pin-hot:#FFE08A;
-  --font-body:'Archivo',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
-  color-scheme:light;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0B1426; --surface:#111D35; --fg:#E8ECF5; --muted:#9AA6BF; --line:#22314F;
-    --ink:#7FA2FF; --ink-2:#A9C0FF; --on-ink:#0B1426; --pin:#F2B33D; --pin-hot:#FFE08A;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0B1426; --surface:#111D35; --fg:#E8ECF5; --muted:#9AA6BF; --line:#22314F;
-  --ink:#7FA2FF; --ink-2:#A9C0FF; --on-ink:#0B1426; --pin:#F2B33D; --pin-hot:#FFE08A;
-  color-scheme:dark;
-}
+:root{--blue:#002A52;--white:#FFFFFF;--dot:#002A52;--dot-hot:#2F7BD8;color-scheme:dark}
 *{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.5;
-  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);-webkit-tap-highlight-color:transparent}
-main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:18px}
-header h1{font-size:clamp(30px,9vw,46px);line-height:1.02;margin:0;font-weight:800;font-stretch:115%;letter-spacing:-.01em}
-header h1 span{color:var(--ink)}
-.kicker{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
-.lede{margin:10px 0 0;color:var(--muted);max-width:52ch}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.btn{appearance:none;font:inherit;font-weight:700;font-size:16px;border-radius:14px;border:2px solid var(--ink);background:transparent;color:var(--ink);
-  padding:14px 12px;min-height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center}
-.btn.primary{background:var(--ink);color:var(--on-ink)}
-.btn.wide{grid-column:1/-1}
-.btn:disabled{opacity:.45;cursor:default}
-.btn svg{width:20px;height:20px;flex:none}
+html,body{margin:0;min-height:100%}
+body{background:var(--blue);color:var(--white);font-family:'Archivo',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:720px;margin:0 auto;padding:28px 16px 40px;display:flex;flex-direction:column;gap:20px;min-height:100svh}
+h1{margin:0;font-size:clamp(40px,13vw,72px);line-height:1;font-weight:800;font-stretch:118%;letter-spacing:-.01em;color:var(--white)}
+.btn{appearance:none;font:inherit;font-weight:700;font-size:18px;color:var(--blue);background:var(--white);border:2px solid var(--white);
+  border-radius:16px;min-height:58px;padding:14px 18px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn.ghost{background:transparent;color:var(--white)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn svg{width:22px;height:22px;flex:none}
 .file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.stage{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:180px;
-  display:flex;align-items:center;justify-content:center}
-.stage canvas{display:block;width:100%;height:auto;touch-action:manipulation}
-.empty{padding:28px 18px;text-align:center;color:var(--muted);font-size:15px}
-.empty strong{display:block;color:var(--fg);font-size:17px;margin-bottom:4px}
-.play{font-size:20px;min-height:64px;border-radius:18px}
-.status{font-family:var(--font-mono);font-size:13px;color:var(--muted);min-height:1.5em;margin:-6px 0 0}
-details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 14px}
-summary{cursor:pointer;font-weight:700;padding:10px 0;list-style:none}
-summary::-webkit-details-marker{display:none}
-summary::after{content:'+';float:right;color:var(--muted);font-family:var(--font-mono)}
-details[open] summary::after{content:'–'}
-.field{display:flex;flex-direction:column;gap:4px;padding:8px 0 12px}
-.field label{display:flex;justify-content:space-between;font-size:15px}
-.field output{font-family:var(--font-mono);font-size:13px;color:var(--muted)}
-input[type="range"]{width:100%;accent-color:var(--ink);height:28px}
-.row{display:flex;gap:10px;flex-wrap:wrap;padding:4px 0 12px}
-.row .btn{flex:1;min-height:44px;font-size:15px;padding:10px}
-.check{display:flex;align-items:center;gap:10px;padding:6px 0 12px;font-size:15px}
-.check input{width:22px;height:22px;accent-color:var(--ink)}
-.how{color:var(--muted);font-size:14px}
-.how ol{padding-left:20px;margin:6px 0}
-footer{color:var(--muted);font-size:13px;font-family:var(--font-mono);text-align:center;padding-top:8px}
-@media (min-width:600px){ .actions{grid-template-columns:1fr 1fr 1fr} .btn.wide{grid-column:auto} }
+canvas{display:block;width:100%;height:auto;border-radius:6px;background:var(--white)}
+canvas[hidden]{display:none}
+.play{min-height:68px;font-size:20px}
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <p class="kicker">Cyanotypie · Spieldose</p>
-    <h1>Tonspur-Tuch <span>hören</span></h1>
-    <p class="lede">Ein Roboter hat Geräusche mit UV-Licht auf das Tuch gezeichnet. Fotografiere ein Stück davon: Die blauen Spuren werden zu einer Spieldose. Links nach rechts ist die Zeit, oben klingt hoch.</p>
-  </header>
-
-  <div class="actions">
-    <label class="btn primary" for="cam">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-      Foto aufnehmen
-    </label>
-    <label class="btn" for="pick">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/></svg>
-      Bild wählen
-    </label>
-    <button type="button" class="btn wide" id="demo">Beispielbild</button>
-  </div>
+  <h1>Blaupause</h1>
+  <label class="btn" for="cam" id="camBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+    Take photo
+  </label>
   <input class="file" type="file" id="cam" accept="image/*" capture="environment">
-  <input class="file" type="file" id="pick" accept="image/*">
-
-  <div class="stage" id="stage">
-    <div class="empty" id="empty"><strong>Noch kein Bild</strong>Halte das Handy quer und fülle das Bild mit dem Tuch.</div>
-    <canvas id="view" hidden></canvas>
-  </div>
-
-  <button type="button" class="btn primary play" id="play" disabled>▶ Abspielen</button>
-  <p class="status" id="status" aria-live="polite"></p>
-
-  <details>
-    <summary>Einstellen</summary>
-    <div class="field">
-      <label for="sens">Empfindlichkeit <output id="sensV"></output></label>
-      <input type="range" id="sens" min="0" max="1" step="0.05" value="0.5">
-    </div>
-    <div class="field">
-      <label for="dur">Dauer <output id="durV"></output></label>
-      <input type="range" id="dur" min="6" max="40" step="1" value="16">
-    </div>
-    <label class="check" for="invert"><input type="checkbox" id="invert"> Helle Spuren auf dunklem Grund</label>
-    <label class="check" for="loop"><input type="checkbox" id="loop"> Endlos wiederholen</label>
-    <div class="row">
-      <button type="button" class="btn" id="rotate">Bild drehen ↻</button>
-    </div>
-  </details>
-
-  <div class="how">
-    <strong>So geht's</strong>
-    <ol>
-      <li>«Foto aufnehmen» und ein Stück des Tuchs möglichst gerade und formatfüllend fotografieren.</li>
-      <li>Die gelben Stifte zeigen, welche Spuren erkannt wurden.</li>
-      <li>«Abspielen» drücken. Kein Ton? Lautstärke prüfen.</li>
-    </ol>
-  </div>
-
-  <footer>ZHdK · Embodied Interaction · UR5e</footer>
+  <canvas id="view" hidden aria-label="Musikwalze"></canvas>
+  <button type="button" class="btn ghost play" id="play" disabled>▶ Play</button>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
-const els = { cam: $('cam'), pick: $('pick'), demo: $('demo'), view: $('view'), empty: $('empty'), play: $('play'), status: $('status'),
-  sens: $('sens'), sensV: $('sensV'), dur: $('dur'), durV: $('durV'), invert: $('invert'), loop: $('loop'), rotate: $('rotate') };
-const ROWS = 24, COLS = 72, MAXW = 640, SR = 44100, TAIL = 3;
+const els = { cam: $('cam'), camBtn: $('camBtn'), view: $('view'), play: $('play') };
+const ROWS = 24, MAXW = 1000, SR = 44100, TAIL = 3, POLY = 6, DUR = 16, SENS = 0.5;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const S = { src: null, rot: 0, pins: [], buf: null, wav: null, url: null, audio: null, raf: 0, dirty: true, img: null, w: 0, h: 0 };
-
-function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-function say(t) { els.status.textContent = t; }
+const S = { src: null, pins: [], wav: null, url: null, audio: null, raf: 0, dirty: true, aspect: 2.2, ready: false };
+const PLAY = '\u25B6 Play', STOP = '\u25A0 Stop';
 
 function rowFreq(row) {
   let f = 80 * Math.pow(2000 / 80, row / (ROWS - 1));
@@ -148,42 +54,8 @@ function rowFreq(row) {
   return 440 * Math.pow(2, Math.round(12 * Math.log2(f / 440)) / 12);
 }
 
-function loadFile(file) {
-  if (!file) return;
-  const url = URL.createObjectURL(file), img = new Image();
-  img.onload = () => { S.src = img; S.rot = 0; analyse(); URL.revokeObjectURL(url); };
-  img.onerror = () => { say('Dieses Bild lässt sich nicht öffnen. Versuche ein JPEG oder PNG.'); URL.revokeObjectURL(url); };
-  img.src = url;
-}
-
-function demoImage() {
-  const c = document.createElement('canvas'), w = 1200, h = 520, g = c.getContext('2d');
-  c.width = w; c.height = h;
-  g.fillStyle = '#EDEBE2'; g.fillRect(0, 0, w, h);
-  const grad = g.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, 'rgba(255,255,255,0.25)'); grad.addColorStop(1, 'rgba(0,0,0,0.12)');
-  g.fillStyle = grad; g.fillRect(0, 0, w, h);
-  let seed = 11;
-  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  g.strokeStyle = '#1D3A86'; g.fillStyle = '#1D3A86'; g.lineCap = 'round';
-  const melody = [9, 12, 14, 12, 9, 7, 9, 16, 14, 12, 9, 7, 5, 7, 9, 12, 19, 16, 14, 12];
-  melody.forEach((r, i) => {
-    const x = 60 + i * 54, y = h - 30 - (r + 0.5) / ROWS * (h - 60);
-    const len = rnd() < 0.3 ? 70 : 18;
-    g.globalAlpha = 0.55 + 0.4 * rnd(); g.lineWidth = 9 + 6 * rnd();
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y + (rnd() - 0.5) * 4); g.stroke();
-    if (i % 4 === 0) { g.beginPath(); g.arc(x + 4, h - 30 - (r - 6.5) / ROWS * (h - 60), 9, 0, 7); g.fill(); }
-  });
-  g.globalAlpha = 0.35; g.lineWidth = 5;
-  g.beginPath(); g.moveTo(40, 120); for (let x = 40; x < w - 40; x += 20) g.lineTo(x, 120 + Math.sin(x / 70) * 30); g.stroke();
-  g.globalAlpha = 1;
-  const img = new Image();
-  img.onload = () => { S.src = img; S.rot = 0; analyse(); };
-  img.src = c.toDataURL('image/jpeg', 0.9);
-}
-
-function sourceCanvas() {
-  const im = S.src, rot = S.rot % 4, iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+function pixels() {
+  const im = S.src, rot = 0, iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
   const sw = rot % 2 ? ih : iw, sh = rot % 2 ? iw : ih, k = Math.min(1, MAXW / Math.max(sw, sh));
   const w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -191,7 +63,9 @@ function sourceCanvas() {
   g.translate(w / 2, h / 2); g.rotate(rot * Math.PI / 2);
   const dw = rot % 2 ? h : w, dh = rot % 2 ? w : h;
   g.drawImage(im, -dw / 2, -dh / 2, dw, dh);
-  return c;
+  const d = g.getImageData(0, 0, w, h).data;
+  c.width = c.height = 1;
+  return { d, w, h };
 }
 
 function boxBlur(src, w, h, r) {
@@ -212,101 +86,87 @@ function boxBlur(src, w, h, r) {
   return out;
 }
 
-function otsu(v) {
-  const hist = new Float64Array(256);
-  for (let i = 0; i < v.length; i++) hist[Math.min(255, Math.floor(v[i] * 255))]++;
-  let total = v.length, sum = 0;
-  for (let i = 0; i < 256; i++) sum += i * hist[i];
-  let sB = 0, wB = 0, best = 0, thr = 0;
-  for (let i = 0; i < 256; i++) {
-    wB += hist[i]; if (!wB) continue;
-    const wF = total - wB; if (!wF) break;
-    sB += i * hist[i];
-    const mB = sB / wB, mF = (sum - sB) / wF, b = wB * wF * (mB - mF) * (mB - mF);
-    if (b > best) { best = b; thr = i; }
-  }
-  return thr / 255;
-}
-
-function analyse() {
-  stop();
-  const c = sourceCanvas(), w = c.width, h = c.height;
-  const d = c.getContext('2d').getImageData(0, 0, w, h).data;
-  const L = new Float32Array(w * h), B = new Float32Array(w * h);
-  for (let i = 0, p = 0; i < L.length; i++, p += 4) {
+function detect(d, w, h, sens, inv) {
+  const n = w * h, L = new Float32Array(n), C = new Float32Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
     L[i] = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2];
-    B[i] = Math.max(0, d[p + 2] - (d[p] + d[p + 1]) / 2) / 128;
+    C[i] = d[p + 2] - (d[p] + d[p + 1]) / 2;
   }
-  const bg = boxBlur(L, w, h, Math.max(4, Math.round(Math.max(w, h) / 14)));
-  const inv = els.invert.checked, ink = new Float32Array(w * h);
-  for (let i = 0; i < ink.length; i++) {
-    const rel = inv ? (L[i] - bg[i]) / Math.max(30, 255 - bg[i]) : (bg[i] - L[i]) / Math.max(30, bg[i]);
-    ink[i] = clamp(inv ? rel : rel * clamp(0.35 + 1.5 * B[i], 0, 1.2), 0, 1);
+  const r = Math.max(3, Math.round(Math.max(w, h) / 30));
+  const bgL = boxBlur(L, w, h, r), bgC = boxBlur(C, w, h, r), score = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    if (inv) { score[i] = clamp((L[i] - bgL[i]) / Math.max(40, 255 - bgL[i]), 0, 1); continue; }
+    const dark = clamp((bgL[i] - L[i]) / Math.max(40, bgL[i]), 0, 1);
+    const blue = clamp((C[i] - bgC[i] - 10) / 40, 0, 1);
+    score[i] = dark * blue;
   }
-  const sens = +els.sens.value, thr = Math.max(0.05, otsu(ink) * (1.5 - sens));
-  const cov = new Float32Array(ROWS * COLS), cnt = new Float32Array(ROWS * COLS);
-  for (let y = 0; y < h; y++) {
-    const r = ROWS - 1 - Math.min(ROWS - 1, Math.floor(y / h * ROWS));
-    for (let x = 0; x < w; x++) {
-      const k = r * COLS + Math.min(COLS - 1, Math.floor(x / w * COLS));
-      cnt[k]++; if (ink[y * w + x] > thr) cov[k]++;
+  const thr = 0.42 - 0.34 * sens, m = Math.max(2, Math.round(0.015 * Math.min(w, h)));
+  const k = w / 1000, minA = Math.max(3, Math.round(6 * k * k)), bandH = h / ROWS;
+  const seen = new Uint8Array(n), stack = new Int32Array(n), pins = [];
+  let found = 0, dropped = 0;
+  for (let i0 = 0; i0 < n; i0++) {
+    if (seen[i0] || score[i0] <= thr) continue;
+    let sp = 0, top = 0, area = 0, sum = 0, x0 = w, x1 = -1, y0 = h, y1 = -1;
+    stack[sp++] = i0; seen[i0] = 1;
+    const list = [];
+    while (sp) {
+      const i = stack[--sp], x = i % w, y = (i / w) | 0;
+      list.push(i); area++; sum += score[i];
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const j = yy * w + xx;
+        if (!seen[j] && score[j] > thr) { seen[j] = 1; stack[sp++] = j; }
+      }
     }
-  }
-  const minCov = 0.16 - 0.1 * sens, on = new Float32Array(ROWS * COLS);
-  for (let k = 0; k < on.length; k++) on[k] = cnt[k] ? cov[k] / cnt[k] : 0;
-  const pins = [];
-  for (let r = 0; r < ROWS; r++) {
-    let c0 = -1, s = 0;
-    for (let col = 0; col <= COLS; col++) {
-      const v = col < COLS ? on[r * COLS + col] : 0;
-      if (v > minCov) { if (c0 < 0) { c0 = col; s = 0; } s += v; if (col - c0 >= 7) { pins.push({ r, c0, c1: col + 1, s: s / (col - c0 + 1) }); c0 = -1; } }
-      else if (c0 >= 0) { pins.push({ r, c0, c1: col, s: s / (col - c0) }); c0 = -1; }
+    found++;
+    const mean = sum / area, bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    const edge = x0 < m || y0 < m || x1 >= w - m || y1 >= h - m;
+    if (area < minA || edge || mean < thr * 1.3 || bh > h * 0.25 || bw > w * 0.4 || area > n * 0.01) { dropped++; continue; }
+    if (bh <= bandH * 1.5) {
+      let sy = 0;
+      for (const i of list) sy += score[i] * ((i / w) | 0);
+      const b = ROWS - 1 - Math.min(ROWS - 1, Math.floor(sy / sum / bandH));
+      pins.push({ r: b, u0: x0 / w, u1: Math.min(1, (x1 + 1) / w), s: clamp(mean * 1.4, 0.2, 1) });
+      continue;
     }
+    const bands = new Map();
+    for (const i of list) {
+      const x = i % w, y = (i / w) | 0, b = ROWS - 1 - Math.min(ROWS - 1, Math.floor(y / bandH));
+      const e = bands.get(b) || { n: 0, s: 0, x0: w, x1: -1 };
+      e.n++; e.s += score[i]; if (x < e.x0) e.x0 = x; if (x > e.x1) e.x1 = x;
+      bands.set(b, e);
+    }
+    const main = Math.max(...[...bands.values()].map(e => e.n));
+    bands.forEach((e, b) => {
+      if (e.n < Math.max(minA / 2, main * 0.35)) return;
+      let u0 = e.x0 / w;
+      const u1 = (e.x1 + 1) / w, s = clamp(e.s / e.n * 1.4, 0.2, 1);
+      while (u1 - u0 > 0.08) { pins.push({ r: b, u0, u1: u0 + 0.06, s }); u0 += 0.06; }
+      pins.push({ r: b, u0, u1, s });
+    });
   }
-  const byCol = new Map();
-  pins.forEach(p => { if (!byCol.has(p.c0)) byCol.set(p.c0, []); byCol.get(p.c0).push(p); });
+  pins.sort((a, b) => a.u0 - b.u0);
   const kept = [];
-  byCol.forEach(list => { list.sort((a, b) => b.s - a.s); kept.push(...list.slice(0, 5)); });
-  kept.sort((a, b) => a.c0 - b.c0 || a.r - b.r);
-  S.pins = kept; S.img = c; S.w = w; S.h = h; S.dirty = true;
-  els.empty.hidden = true; els.view.hidden = false;
-  draw(-1);
-  els.play.disabled = !kept.length;
-  say(kept.length ? `${kept.length} Stifte erkannt.` : 'Keine Spuren erkannt: näher heran, mehr Licht oder Empfindlichkeit erhöhen.');
-}
-
-function draw(t) {
-  const cv = els.view, dpr = Math.min(2, window.devicePixelRatio || 1), cw = cv.clientWidth || cv.parentElement.clientWidth;
-  if (!S.img) return;
-  const W = Math.round(cw * dpr), H = Math.round(cw * S.h / S.w * dpr);
-  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  const g = cv.getContext('2d');
-  g.globalAlpha = 1; g.drawImage(S.img, 0, 0, W, H);
-  g.fillStyle = 'rgba(10,20,40,0.35)'; g.fillRect(0, 0, W, H);
-  const cwid = W / COLS, rh = H / ROWS, dur = +els.dur.value, pin = css('--pin'), hot = css('--pin-hot');
-  for (const p of S.pins) {
-    const x = p.c0 * cwid, y = (ROWS - 1 - p.r) * rh, wd = Math.max(cwid * 0.8, (p.c1 - p.c0) * cwid - 2);
-    const t0 = p.c0 / COLS * dur, live = t >= t0 && t < t0 + 0.35;
-    g.fillStyle = live ? hot : pin; g.globalAlpha = live ? 1 : 0.55 + 0.45 * clamp(p.s * 2, 0, 1);
-    const r = Math.min(rh * 0.35, 6 * dpr), yy = y + rh * 0.2, hh = rh * 0.6;
-    g.beginPath(); g.roundRect ? g.roundRect(x + 1, yy, wd, hh, r) : g.rect(x + 1, yy, wd, hh); g.fill();
-    if (live) { g.globalAlpha = 0.35; g.beginPath(); g.arc(x + cwid / 2, y + rh / 2, rh * 1.2, 0, 7); g.fill(); }
+  for (const p of pins) {
+    const near = kept.filter(q => p.u0 - q.u0 < 0.012);
+    const twin = near.find(q => q.r === p.r);
+    if (twin) { twin.u1 = Math.max(twin.u1, p.u1); twin.s = Math.max(twin.s, p.s); continue; }
+    if (near.length >= POLY) continue;
+    kept.push(p);
   }
-  g.globalAlpha = 1;
-  if (t >= 0) {
-    const x = t / dur * W;
-    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(x - dpr, 0, 2 * dpr, H);
-  }
+  return { pins: kept, found, dropped };
 }
 
 async function render() {
-  const dur = +els.dur.value, OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const dur = DUR, OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const off = new OAC(1, Math.ceil((dur + TAIL) * SR), SR);
   const comp = off.createDynamicsCompressor(), master = off.createGain();
   master.gain.value = 0.6; master.connect(comp); comp.connect(off.destination);
   for (const p of S.pins) {
-    const t0 = p.c0 / COLS * dur, t1 = p.c1 / COLS * dur, f = rowFreq(p.r);
-    const tau = 0.18 + 0.5 * Math.min(1.5, t1 - t0), end = t0 + Math.min(4, 5 * tau), peak = 0.12 + 0.3 * clamp(p.s * 1.5, 0.2, 1);
+    const t0 = p.u0 * dur, t1 = p.u1 * dur, f = rowFreq(p.r);
+    const tau = 0.18 + 0.5 * Math.min(1.5, t1 - t0), end = t0 + Math.min(4, 5 * tau), peak = 0.12 + 0.3 * p.s;
     for (const [mul, amp, dec] of [[1, 1, 1], [2.76, 0.22, 0.35], [5.4, 0.08, 0.15]]) {
       if (f * mul > SR / 2 - 1000) continue;
       const o = off.createOscillator(), gn = off.createGain();
@@ -332,11 +192,57 @@ function wav(x, sr) {
   return new Blob([ab], { type: 'audio/wav' });
 }
 
+function loadFile(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file), img = new Image();
+  els.camBtn.style.opacity = '0.5';
+  img.onload = () => { S.src = img; setTimeout(() => { analyse(); els.camBtn.style.opacity = ''; }, 20); URL.revokeObjectURL(url); };
+  img.onerror = () => { els.camBtn.style.opacity = ''; URL.revokeObjectURL(url); };
+  img.src = url;
+}
+
+function analyse() {
+  stop();
+  const { d, w, h } = pixels();
+  S.pins = detect(d, w, h, SENS, false).pins;
+  S.aspect = clamp(w / h, 1.6, 2.6); S.dirty = true; S.ready = true;
+  els.view.hidden = false;
+  draw(-1);
+  els.play.disabled = !S.pins.length;
+}
+
+function draw(t) {
+  if (!S.ready) return;
+  const cv = els.view, dpr = Math.min(2, window.devicePixelRatio || 1), cw = cv.clientWidth || cv.parentElement.clientWidth;
+  const W = Math.round(cw * dpr), H = Math.round(cw / S.aspect * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d');
+  g.globalAlpha = 1; g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+  const pad = W * 0.04, span = W - 2 * pad, rh = (H - 2 * pad) / ROWS, X = u => pad + u * span;
+  for (const p of S.pins) {
+    const t0 = p.u0 * DUR, live = t >= t0 && t < t0 + 0.35;
+    const cx = X(p.u0), cy = pad + (ROWS - 1 - p.r + 0.5) * rh, rad = Math.max(2.5 * dpr, rh * (0.28 + 0.14 * p.s));
+    const len = Math.max(0, (p.u1 - p.u0) * span - 2 * rad);
+    g.globalAlpha = live ? 1 : 0.7 + 0.3 * p.s;
+    g.fillStyle = live ? '#2F7BD8' : '#002A52';
+    g.beginPath();
+    if (len > 0 && g.roundRect) g.roundRect(cx, cy - rad, len + 2 * rad, 2 * rad, rad); else g.arc(cx + rad, cy, rad, 0, Math.PI * 2);
+    g.fill();
+    if (live) { g.globalAlpha = 0.25; g.beginPath(); g.arc(cx + rad, cy, rad * 2.4, 0, Math.PI * 2); g.fill(); }
+  }
+  g.globalAlpha = 1;
+  if (t >= 0) {
+    const x = X(clamp(t / DUR, 0, 1));
+    g.fillStyle = 'rgba(0,42,82,0.12)'; g.fillRect(x - 8 * dpr, 0, 8 * dpr, H);
+    g.fillStyle = 'rgba(0,42,82,0.55)'; g.fillRect(x - dpr * 0.75, 0, 1.5 * dpr, H);
+  }
+}
+
 function stop() {
   cancelAnimationFrame(S.raf);
   if (S.audio) { S.audio.pause(); S.audio.currentTime = 0; }
-  els.play.textContent = '▶ Abspielen';
-  if (S.img) draw(-1);
+  els.play.textContent = PLAY;
+  draw(-1);
 }
 
 async function play() {
@@ -346,44 +252,28 @@ async function play() {
   if (S.dirty) {
     a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
     a.play().catch(() => {});
-    els.play.disabled = true; els.play.textContent = 'Spieldose wird gestimmt …';
+    els.play.disabled = true; els.play.textContent = '\u2026';
     try { S.wav = await render(); }
-    catch (e) { els.play.disabled = false; stop(); say('Der Ton konnte nicht erzeugt werden.'); return; }
+    catch (e) { els.play.disabled = false; stop(); return; }
     if (S.url) URL.revokeObjectURL(S.url);
     S.url = URL.createObjectURL(S.wav); a.src = S.url; S.dirty = false;
     els.play.disabled = false;
   }
-  a.loop = els.loop.checked;
   a.currentTime = 0;
-  try { await a.play(); } catch (e) { stop(); say('Tippe nochmals auf «Abspielen».'); return; }
-  els.play.textContent = '■ Stopp';
+  try { await a.play(); } catch (e) { stop(); return; }
+  els.play.textContent = STOP;
   a.onended = () => stop();
-  const dur = +els.dur.value;
   const tick = () => {
     const t = a.currentTime;
-    draw(t <= dur ? t : -1);
+    draw(t <= DUR ? t : -1);
     if (!a.paused) S.raf = requestAnimationFrame(tick);
   };
   S.raf = requestAnimationFrame(tick);
 }
 
-function labels() {
-  els.sensV.textContent = Math.round(+els.sens.value * 100) + ' %';
-  els.durV.textContent = els.dur.value + ' s';
-}
-
 els.cam.addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
-els.pick.addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
-els.demo.addEventListener('click', demoImage);
 els.play.addEventListener('click', play);
-els.rotate.addEventListener('click', () => { if (S.src) { S.rot = (S.rot + 1) % 4; analyse(); } });
-els.sens.addEventListener('input', labels);
-els.sens.addEventListener('change', () => { if (S.src) analyse(); });
-els.dur.addEventListener('input', () => { labels(); S.dirty = true; stop(); });
-els.invert.addEventListener('change', () => { if (S.src) analyse(); });
-els.loop.addEventListener('change', () => { if (S.audio) S.audio.loop = els.loop.checked; });
-window.addEventListener('resize', () => { if (S.img) draw(-1); });
-labels();
+window.addEventListener('resize', () => draw(-1));
 </script>
 </body>
 </html>
