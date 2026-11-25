@@ -23,6 +23,7 @@ from planner import JobError, JobQueue, Lap, make_job, plan_job
 
 PAGE = HERE.parent / "tonspur-tuch.html"
 HISTORY = 40
+MOVING_RADPS = 0.01
 HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-]{0,62}$")
 
 
@@ -404,6 +405,7 @@ class Hub:
     def poller(self):
         conn = None
         host = None
+        prev = None
         while True:
             if self.idle:
                 if conn is not None:
@@ -418,15 +420,24 @@ class Hub:
                     conn.disconnect()
                     conn = None
                 if conn is None:
+                    prev = None
                     host = self.host
                     probe(host)
                     conn = RobotConnection(host).connect()
                 q = conn.receive.getActualQ()
                 pose = conn.receive.getActualTCPPose()
+                now = time.monotonic()
+                w = v = 0.0
+                if prev is not None and now > prev[0]:
+                    dt = now - prev[0]
+                    w = max(abs(x - y) for x, y in zip(q, prev[1])) / dt
+                    v = math.dist(pose[:3], prev[2][:3]) / dt
+                prev = (now, list(q), list(pose))
                 d = self.cyl.describe_pose(pose, q[0])
                 live = {"a": round(d["a"], 2), "h": round(d["h"], 4), "r": round(d["r"], 4),
                         "facing": d["facing"], "gap": None if d["gap"] is None else round(d["gap"], 4),
-                        "base_deg": round(math.degrees(q[0]), 1), "t": time.time()}
+                        "base_deg": round(math.degrees(q[0]), 1), "t": time.time(),
+                        "moving": w > MOVING_RADPS, "w": round(w, 3), "v": round(v, 3)}
                 with self.lock:
                     self.live = live
                     armed = not self.estop and not self.idle

@@ -213,6 +213,12 @@ canvas.ruler{display:block;margin-top:8px}
       <p class="hint" id="dmxState">nicht verbunden</p>
       <label class="field" for="dryRun" id="dryBox" hidden><input type="checkbox" id="dryRun"> Trockenlauf: nur Bewegung, Lampe bleibt aus (Aufträge laufen ohne DMX)</label>
     </div>
+    <div class="group">
+      <span class="glabel">Motorgeräusch</span>
+      <label class="check" for="humOn"><input type="checkbox" id="humOn"> Brummen, solange sich der Arm bewegt</label>
+      <label class="field" for="humVol">Lautstärke <input type="range" id="humVol" min="0" max="1" step="0.05" value="0.5"></label>
+      <p class="hint" id="humState">Arm: –</p>
+    </div>
   </section>
 
   <section class="panel mics" aria-label="Mikrofone">
@@ -296,7 +302,7 @@ const els = {
   cloth: $('cloth'), clothRuler: $('clothRuler'), clothStage: $('clothStage'), clothInfo: $('clothInfo'),
   rec: $('rec'), recLabel: $('recLabel'), dur: $('dur'), file: $('file'), demo: $('demo'), order: $('order'),
   clothReset: $('clothReset'), lampLabel: $('lampLabel'), dmxDriver: $('dmxDriver'), dmxConnect: $('dmxConnect'),
-  dmxTest: $('dmxTest'), dmxState: $('dmxState'), clothLegend: $('clothLegend'),
+  dmxTest: $('dmxTest'), dmxState: $('dmxState'), humOn: $('humOn'), humVol: $('humVol'), humState: $('humState'), clothLegend: $('clothLegend'),
   connSeg: $('connSeg'), connHost: $('connHost'), connPayload: $('connPayload'), connPayloadBox: $('connPayloadBox'),
   connGo: $('connGo'), connHint: $('connHint'), connMsg: $('connMsg'), dryRun: $('dryRun'), dryBox: $('dryBox'), play: $('play'), playInfo: $('playInfo'),
   micsOn: $('micsOn'), autoSend: $('autoSend'), micList: $('micList'), recSecs: $('recSecs'),
@@ -1281,6 +1287,7 @@ function renderStatus() {
     els.robotHint.hidden = false;
     ['rTarget', 'rConn', 'rLap', 'rAngle', 'rHeight', 'rLamp', 'rStep', 'rJob', 'rQueue'].forEach(k => els[k].textContent = '–');
     els.rErrBox.hidden = true;
+    humUpdate(null);
     updateButtons();
     return;
   }
@@ -1292,6 +1299,7 @@ function renderStatus() {
   els.rLap.textContent = `${s.lap} · nächster Auftrag ab ${s.cursor.toFixed(0)}°`;
   const lv = s.live || {};
   els.rAngle.textContent = lv.a != null ? `${lv.a.toFixed(1)}° (Basisgelenk ${lv.base_deg}°)` : '–';
+  humUpdate(s.live);
   els.rHeight.textContent = lv.h != null ? `${lv.h.toFixed(3)} m über der Basis` : '–';
   const ls = s.lamp || {};
   if (ls.control === 'dmx') {
@@ -1316,6 +1324,65 @@ function renderStatus() {
   const err = [s.error, s.estop_msg].filter(Boolean).join(' · ');
   els.rErrBox.hidden = !err; els.rErr.textContent = err;
   updateButtons();
+}
+
+const HUM = { el: null, building: false, on: false, vol: 0.5, moving: false, target: 0, rate: 1, cur: 0, timer: null };
+function humWav(x, sr) {
+  const n = x.length, buf = new ArrayBuffer(44 + n * 2), d = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) d.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); d.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); d.setUint32(16, 16, true);
+  d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, sr, true); d.setUint32(28, sr * 2, true);
+  d.setUint16(32, 2, true); d.setUint16(34, 16, true); w(36, 'data'); d.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) d.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x[i])) * 32767, true);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+async function humBuild() {
+  if (HUM.el || HUM.building) return;
+  HUM.building = true;
+  const sr = 44100, len = 5, c = new OfflineAudioContext(1, sr * len, sr);
+  const out = c.createGain(); out.gain.value = 0.5; out.connect(c.destination);
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 280; lp.Q.value = 3;
+  const wob = c.createGain(); wob.gain.value = 0.8; lp.connect(wob); wob.connect(out);
+  const lfo = c.createOscillator(), lfoAmt = c.createGain(); lfo.frequency.value = 7; lfoAmt.gain.value = 0.2;
+  lfo.connect(lfoAmt); lfoAmt.connect(wob.gain); lfo.start(0);
+  [[48, 'sawtooth', 0.35], [48.75, 'sawtooth', 0.3], [24, 'sine', 0.6], [96.25, 'square', 0.05]].forEach(([f, type, g]) => {
+    const o = c.createOscillator(), a = c.createGain(); o.type = type; o.frequency.value = f; a.gain.value = g;
+    o.connect(a); a.connect(lp); o.start(0);
+  });
+  const nb = c.createBuffer(1, sr * len, sr), nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const ns = c.createBufferSource(), bp = c.createBiquadFilter(), ng = c.createGain();
+  ns.buffer = nb; bp.type = 'bandpass'; bp.frequency.value = 140; bp.Q.value = 1.5; ng.gain.value = 0.25;
+  ns.connect(bp); bp.connect(ng); ng.connect(out); ns.start(0);
+  const x = (await c.startRendering()).getChannelData(0).subarray(sr);
+  const el = new Audio(URL.createObjectURL(humWav(x, sr)));
+  el.loop = true; el.volume = 0; el.preservesPitch = false;
+  HUM.el = el; HUM.building = false;
+  HUM.timer = setInterval(humTick, 40);
+}
+function humTick() {
+  const el = HUM.el;
+  if (!el) return;
+  HUM.cur += (HUM.target - HUM.cur) * (HUM.target > HUM.cur ? 0.5 : 0.25);
+  if (HUM.cur < 0.002 && HUM.target === 0) HUM.cur = 0;
+  el.volume = Math.min(1, HUM.cur);
+  el.playbackRate += (HUM.rate - el.playbackRate) * 0.2;
+  if (HUM.on && el.paused) el.play().catch(() => {});
+  if (!HUM.on && HUM.cur === 0 && !el.paused) el.pause();
+}
+function humUpdate(lv) {
+  const moving = !!(robot.online && lv && lv.moving);
+  HUM.moving = moving;
+  els.humState.textContent = !robot.online || !lv || lv.moving == null ? 'Arm: keine Live-Daten'
+    : moving ? `Arm bewegt sich (${(lv.v * 1000).toFixed(0)} mm/s, Gelenke bis ${lv.w.toFixed(2)} rad/s)` : 'Arm steht';
+  HUM.target = HUM.on && moving ? HUM.vol : 0;
+  HUM.rate = 1 + 0.3 * Math.min(1, (lv && lv.v || 0) / 0.15);
+}
+function humSet(on) {
+  HUM.on = on;
+  if (on) humBuild();
+  try { localStorage.setItem('tonspur-hum', JSON.stringify({ on: HUM.on, vol: HUM.vol })); } catch (e) {}
+  humUpdate(robot.status && robot.status.live);
 }
 
 async function poll() {
@@ -1776,8 +1843,7 @@ async function startMics() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showMsg('Kein Mikrofonzugriff: öffne http://localhost:8765/ in Chrome.'); return; }
   try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); }
   catch (e) { showMsg('Der Mikrofonzugriff wurde verweigert. Erlaube ihn in der Adresszeile und versuche es nochmals.'); return; }
-  const AC = window.AudioContext || window.webkitAudioContext;
-  mctx = new AC();
+  mctx = micCtx();
   try { await mctx.resume(); } catch (e) {}
   micsActive = true;
   els.micsOn.textContent = 'Mikrofone ausschalten';
@@ -1861,7 +1927,41 @@ function closeMic(m) {
   m.level = -100;
 }
 
+function micCtx() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  try { return new AC({ sinkId: { type: 'none' } }); } catch (e) { return new AC(); }
+}
+
+function micWatch() {
+  const now = performance.now();
+  if (now - (micWatch.t || 0) < 1000) return;
+  micWatch.t = now;
+  if (!mctx || micWatch.busy) return;
+  if (mctx.state !== 'running' && mctx.state !== 'closed') mctx.resume().catch(() => {});
+  const ct = mctx.currentTime;
+  micWatch.still = mctx.state === 'running' && ct === micWatch.ct ? (micWatch.still || 0) + 1 : 0;
+  micWatch.ct = ct;
+  if (micWatch.still >= 2) {
+    micWatch.busy = true; micWatch.still = 0;
+    showMsg('Mikrofone standen still: werden neu gestartet.');
+    stopMics();
+    startMics().finally(() => { micWatch.busy = false; });
+    return;
+  }
+  for (const m of MICS) {
+    if (!m.stream || m.reopening) continue;
+    const tr = m.stream.getAudioTracks()[0];
+    m.stuck = m.clock === m.lastClock ? (m.stuck || 0) + 1 : 0;
+    m.lastClock = m.clock;
+    if (!tr || tr.readyState === 'ended' || m.stuck >= 2) {
+      m.reopening = true; m.stuck = 0;
+      openMic(m).finally(() => { m.reopening = false; });
+    }
+  }
+}
+
 function micTick() {
+  micWatch();
   const hang = Math.round(CFG.gap_keep_s * FPS);
   for (const m of MICS) {
     if (m.an) {
@@ -2038,6 +2138,10 @@ els.dmxTest.addEventListener('click', dmxTest);
 wireSeg('connSeg', 'tgt', setConnTarget);
 els.connGo.addEventListener('click', connectRobot);
 els.connHost.addEventListener('keydown', e => { if (e.key === 'Enter' && !els.connGo.disabled) connectRobot(); });
+try { const h = JSON.parse(localStorage.getItem('tonspur-hum') || 'null'); if (h) { HUM.vol = h.vol; els.humVol.value = h.vol; els.humOn.checked = h.on; HUM.on = false; } } catch (e) {}
+els.humOn.addEventListener('change', () => humSet(els.humOn.checked));
+els.humVol.addEventListener('input', () => { HUM.vol = +els.humVol.value; humSet(HUM.on); });
+document.addEventListener('pointerdown', () => { if (els.humOn.checked && !HUM.on) humSet(true); }, { once: true });
 try { const d = localStorage.getItem('tonspur-dmx'); if (d && DMX_NAMES[d]) els.dmxDriver.value = d; } catch (e) {}
 els.dmxDriver.addEventListener('change', () => { try { localStorage.setItem('tonspur-dmx', els.dmxDriver.value); } catch (e) {} });
 if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => { if (e.target === DMX.port) dmxLost('DMX-Interface wurde abgesteckt'); });
